@@ -72,6 +72,8 @@ void PartyBotAI::CloneFromPlayer(Player const* pPlayer)
 
 void PartyBotAI::LearnPremadeSpecForClass()
 {
+    uint32 spec = 0;
+
     // First attempt to find a spec. Must be for correct class, level and role.
     for (const auto& itr : sObjectMgr.GetPlayerPremadeSpecTemplates())
     {
@@ -79,11 +81,9 @@ void PartyBotAI::LearnPremadeSpecForClass()
            ((m_role == ROLE_INVALID) || (itr.second.role == m_role)) &&
            (!m_level || (itr.second.level == m_level)))
         {
+            spec = itr.first;
             if (m_role == ROLE_INVALID)
                 m_role = itr.second.role;
-
-            sObjectMgr.ApplyPremadeSpecTemplateToPlayer(itr.first, me);
-            return;
         }
     }
 
@@ -96,30 +96,44 @@ void PartyBotAI::LearnPremadeSpecForClass()
             if (itr.second.requiredClass == me->GetClass() &&
                 (!m_level || (itr.second.level == m_level)))
             {
+                spec = itr.first;
+            }
+        }
+    }
+
+    if (spec != 0)
+    {
+        sObjectMgr.ApplyPremadeSpecTemplateToPlayer(spec, me);
+
+        // First attempt to find gear. Must be for correct class, level and role.
+        for (const auto& itr : sObjectMgr.GetPlayerPremadeGearTemplates())
+        {
+            if (itr.second.requiredClass == me->GetClass() &&
+                ((m_role == ROLE_INVALID) || (itr.second.role == m_role)) &&
+                (!m_level || (itr.second.level == m_level)))
+            {
                 sObjectMgr.ApplyPremadeSpecTemplateToPlayer(itr.first, me);
                 return;
             }
-        }
-    }
-    
-    if (m_level > 1)
-    {
-        // Third attempt. Check for lower level specs. Better than nothing.
-        for (const auto& itr : sObjectMgr.GetPlayerPremadeSpecTemplates())
-        {
-            if (itr.second.requiredClass == me->GetClass() &&
-                itr.second.level < m_level)
+
+            // Second attempt, but this time we will accept any role, just so
+            // that we have level appropriate spells.
+            for (const auto& itr : sObjectMgr.GetPlayerPremadeSpecTemplates())
             {
-                sObjectMgr.ApplyPremadeSpecTemplateToPlayer(itr.first, me);
-                break;
+                if (itr.second.requiredClass == me->GetClass() &&
+                    (!m_level || (itr.second.level == m_level)))
+                {
+                    sObjectMgr.ApplyPremadeSpecTemplateToPlayer(itr.first, me);
+                    return;
+                }
             }
         }
-
-        me->MonsterSay("No spec template for this level found!");
-        me->GiveLevel(m_level);
-        me->InitTalentForLevel();
-        me->SetUInt32Value(PLAYER_XP, 0);
+        return;
     }
+
+    sObjectMgr.ApplyPremadeSpecTemplateToPlayer(spec, me);
+    
+    me->MonsterSay("No spec template for this level found!");
 }
 
 Player* PartyBotAI::GetPartyLeader() const
@@ -143,8 +157,7 @@ void PartyBotAI::RunAwayFromTarget(Unit* pTarget)
             pLeader->GetMap() == me->GetMap())
         {
             float const distance = me->GetDistance(pLeader);
-            if (distance >= 15.0f && distance <= 30.0f &&
-                pLeader->GetDistance(pTarget) >= 15.0f)
+            if (distance >= 18.0f)
             {
                 me->GetMotionMaster()->MoveIdle();
                 me->MonsterMove(pLeader->GetPositionX(), pLeader->GetPositionY(), pLeader->GetPositionZ());
@@ -153,7 +166,7 @@ void PartyBotAI::RunAwayFromTarget(Unit* pTarget)
         }
     }
 
-    me->GetMotionMaster()->MoveDistance(pTarget, 15.0f);
+    me->GetMotionMaster()->MoveDistance(pTarget, 8.5f);
 }
 
 bool PartyBotAI::DrinkAndEat()
@@ -164,8 +177,8 @@ bool PartyBotAI::DrinkAndEat()
     if (me->GetVictim())
         return false;
 
-    bool const needToEat = me->GetHealthPercent() < 100.0f;
-    bool const needToDrink = (me->GetPowerType() == POWER_MANA) && (me->GetPowerPercent(POWER_MANA) < 100.0f);
+    bool const needToEat = me->GetHealthPercent() < 90.0f;
+    bool const needToDrink = (me->GetPowerType() == POWER_MANA) && (me->GetPowerPercent(POWER_MANA) < 85.0f);
 
     if (!needToEat && !needToDrink)
         return false;
@@ -692,6 +705,23 @@ void PartyBotAI::UpdateInCombatAI()
             }
         }
     }
+    else if (m_role == ROLE_MELEE_DPS || m_role == ROLE_RANGE_DPS)
+    {
+        if (Unit* pVictim = me->GetVictim())
+        {
+            if (Player* pLeader = GetPartyLeader())
+            {
+                if (Unit* newTarget = SelectAttackTarget(pLeader))
+                {
+                    if (newTarget != pVictim)
+                    {
+                        me->AttackStop(true);
+                        AttackStart(newTarget);
+                    }
+                }
+            }
+        }
+    }
 
     switch (me->GetClass())
     {
@@ -855,7 +885,7 @@ void PartyBotAI::UpdateInCombatAI_Paladin()
                 return;
         }
 
-        if (FindAndHealInjuredAlly(80.0f, 90.0f))
+        if (FindAndHealInjuredAlly(85.0f, 85.0f))
             return;
     }
     else
@@ -954,9 +984,16 @@ void PartyBotAI::UpdateInCombatAI_Paladin()
             return;
     }
     
-    if (m_role != ROLE_HEALER &&
-        me->GetHealthPercent() < 30.0f)
+    if (m_role == ROLE_TANK && me->GetHealthPercent() < 35.0f)
+    {
         HealInjuredTarget(me);
+        return;
+    }
+    else if (m_role != ROLE_HEALER)
+    {
+        if(FindAndHealInjuredAlly(35.0f, 35.0f))
+            return;
+    }
 }
 
 void PartyBotAI::UpdateOutOfCombatAI_Shaman()
@@ -996,6 +1033,12 @@ void PartyBotAI::UpdateInCombatAI_Shaman()
     {
         if (DoCastSpell(me, m_spells.shaman.pManaTideTotem) == SPELL_CAST_OK)
             return;
+    }
+
+    if (m_role == ROLE_HEALER)
+    {
+        FindAndHealInjuredAlly(75.0f, 85.0f);
+        return;
     }
 
     if (m_role != ROLE_HEALER)
@@ -1062,6 +1105,9 @@ void PartyBotAI::UpdateInCombatAI_Shaman()
                 if (DoCastSpell(pVictim, m_spells.shaman.pLightningBolt) == SPELL_CAST_OK)
                     return;
             }
+
+            if (FindAndHealInjuredAlly(35.0f, 35.0f))
+                return;
         }
     }
 
@@ -1092,10 +1138,6 @@ void PartyBotAI::UpdateInCombatAI_Shaman()
         }
     }
 
-    if (m_role == ROLE_HEALER)
-        FindAndHealInjuredAlly(50.0f, 90.0f);
-    else if (me->GetHealthPercent() < 20.0f)
-        HealInjuredTarget(me);
 }
 
 void PartyBotAI::UpdateOutOfCombatAI_Hunter()
@@ -1552,9 +1594,9 @@ void PartyBotAI::UpdateOutOfCombatAI_Priest()
     {
         if (Player* pTarget = SelectBuffTarget(m_spells.priest.pPowerWordFortitude))
         {
-            if (CanTryToCastSpell(me, m_spells.priest.pPowerWordFortitude))
+            if (CanTryToCastSpell(pTarget, m_spells.priest.pPowerWordFortitude))
             {
-                if (DoCastSpell(me, m_spells.priest.pPowerWordFortitude) == SPELL_CAST_OK)
+                if (DoCastSpell(pTarget, m_spells.priest.pPowerWordFortitude) == SPELL_CAST_OK)
                 {
                     m_isBuffing = true;
                     return;
@@ -1686,12 +1728,12 @@ void PartyBotAI::UpdateInCombatAI_Priest()
         }
 
         // Direct heal more seriously injured.
-        if (Unit* pTarget = SelectHealTarget(70.0f, 80.0f))
+        if (Unit* pTarget = SelectHealTarget(75.0f, 75.0f))
             if (HealInjuredTargetDirect(pTarget))
                 return;
 
         // Apply HoT aura for small injuries.
-        if (Unit* pTarget = SelectPeriodicHealTarget(80.0f, 90.0f))
+        if (Unit* pTarget = SelectPeriodicHealTarget(85.0f, 85.0f))
             if (HealInjuredTargetPeriodic(pTarget))
                 return;
 
@@ -2654,12 +2696,12 @@ void PartyBotAI::UpdateInCombatAI_Druid()
         }
 
         // Prioritize applying HoTs.
-        if (Unit* pTarget = SelectPeriodicHealTarget(80.0f, 90.0f))
+        if (Unit* pTarget = SelectPeriodicHealTarget(85.0f, 85.0f))
             if (HealInjuredTargetPeriodic(pTarget))
                 return;
 
         // Direct heal.
-        if (Unit* pTarget = SelectHealTarget(60.0f, 70.0f))
+        if (Unit* pTarget = SelectHealTarget(75.0f, 75.0f))
             if (HealInjuredTargetDirect(pTarget))
                 return;
 
