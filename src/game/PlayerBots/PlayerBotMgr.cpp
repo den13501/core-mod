@@ -761,7 +761,7 @@ bool ChatHandler::HandlePartyBotAddCommand(char* args)
     }
 
     uint8 botClass = 0;
-    uint32 botLevel = sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL);
+    uint32 botLevel = pPlayer->GetLevel();
     CombatBotRoles botRole = ROLE_INVALID;
 
     if (char* arg1 = ExtractArg(&args))
@@ -798,28 +798,38 @@ bool ChatHandler::HandlePartyBotAddCommand(char* args)
         else if (option == "healer")
         {
             std::vector<uint32> healerClasses = { CLASS_PRIEST, CLASS_DRUID };
+
             /*if (pPlayer->GetTeam() == HORDE)
                 healerClasses.push_back(CLASS_SHAMAN);
             else
                 healerClasses.push_back(CLASS_PALADIN);*/
+
             botClass = SelectRandomContainerElement(healerClasses);
             botRole = ROLE_HEALER;
         }
         else if (option == "tank")
         {
-            botClass = CLASS_WARRIOR;
+            std::vector<uint32> tankClasses = { CLASS_WARRIOR };
+            
+            /*if (pPlayer->GetTeam() == ALLIANCE)
+                tankClasses.push_back(CLASS_PALADIN);*/
+
+            botClass = SelectRandomContainerElement(tankClasses);
             botRole = ROLE_TANK;
         }
 
         ExtractUInt32(&args, botLevel);
     }
-
+    
     if (!botClass)
     {
         SendSysMessage("Incorrect syntax. Expected role or class.");
         SetSentErrorMessage(true);
         return false;
     }
+    
+    if(botClass && botRole == ROLE_INVALID)
+        botRole = CombatBotBaseAI::IsMeleeWeaponClass(botClass) ? ROLE_MELEE_DPS : ROLE_RANGE_DPS;
 
     uint8 botRace = SelectRandomRaceForClass(botClass, pPlayer->GetTeam());
 

@@ -78,23 +78,21 @@ void PartyBotAI::LearnPremadeSpecForClass()
     for (const auto& itr : sObjectMgr.GetPlayerPremadeSpecTemplates())
     {
         if (itr.second.requiredClass == me->GetClass() &&
-           ((m_role == ROLE_INVALID) || (itr.second.role == m_role)) &&
-           (!m_level || (itr.second.level == m_level)))
+            itr.second.role == m_role &&
+            itr.second.level == m_level)
         {
             spec = itr.first;
-            if (m_role == ROLE_INVALID)
-                m_role = itr.second.role;
         }
     }
 
-    if (m_role != ROLE_INVALID)
+    if (spec == 0)
     {
         // Second attempt, but this time we will accept any role, just so
         // that we have level appropriate spells.
         for (const auto& itr : sObjectMgr.GetPlayerPremadeSpecTemplates())
         {
             if (itr.second.requiredClass == me->GetClass() &&
-                (!m_level || (itr.second.level == m_level)))
+                itr.second.level == m_level)
             {
                 spec = itr.first;
             }
@@ -109,29 +107,26 @@ void PartyBotAI::LearnPremadeSpecForClass()
         for (const auto& itr : sObjectMgr.GetPlayerPremadeGearTemplates())
         {
             if (itr.second.requiredClass == me->GetClass() &&
-                ((m_role == ROLE_INVALID) || (itr.second.role == m_role)) &&
-                (!m_level || (itr.second.level == m_level)))
+                itr.second.role == m_role &&
+                itr.second.level == m_level)
             {
-                sObjectMgr.ApplyPremadeSpecTemplateToPlayer(itr.first, me);
+                sObjectMgr.ApplyPremadeGearTemplateToPlayer(itr.first, me);
                 return;
             }
-
-            // Second attempt, but this time we will accept any role, just so
-            // that we have level appropriate spells.
-            for (const auto& itr : sObjectMgr.GetPlayerPremadeSpecTemplates())
+        }
+        // Second attempt, but this time we will accept any role, just so
+        // that we have level appropriate gear.
+        for (const auto& itr : sObjectMgr.GetPlayerPremadeGearTemplates())
+        {
+            if (itr.second.requiredClass == me->GetClass() &&
+                itr.second.level == m_level)
             {
-                if (itr.second.requiredClass == me->GetClass() &&
-                    (!m_level || (itr.second.level == m_level)))
-                {
-                    sObjectMgr.ApplyPremadeSpecTemplateToPlayer(itr.first, me);
-                    return;
-                }
+                sObjectMgr.ApplyPremadeGearTemplateToPlayer(itr.first, me);
+                return;
             }
         }
         return;
     }
-
-    sObjectMgr.ApplyPremadeSpecTemplateToPlayer(spec, me);
     
     me->MonsterSay("No spec template for this level found!");
 }

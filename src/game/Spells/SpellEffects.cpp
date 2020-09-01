@@ -5721,8 +5721,8 @@ void Spell::EffectDisEnchant(SpellEffectIndex /*eff_idx*/)
     // quick solution to prevent exploiting; this will cause items loss on full bags though
     // in order to fix this correctly have to fix first plMover->SendLootRelease(lootGuid); @ MovementHandler
     // and in order to fix it the loot manager has to be rewritten; not me pls
-    if (ObjectGuid lootGuid = pCaster->GetLootGuid())
-        pCaster->GetSession()->DoLootRelease(lootGuid);
+    /*if (ObjectGuid lootGuid = pCaster->GetLootGuid())
+        pCaster->GetSession()->DoLootRelease(lootGuid);*/
 
     // item will be removed at disenchanting end
 }
