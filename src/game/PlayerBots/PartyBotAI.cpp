@@ -78,18 +78,7 @@ void PartyBotAI::LearnPremadeSpecForClass()
     level = m_level;
     while (spec == 0 && level >= (m_level - 4))
     {
-        if (itr.second.requiredClass == me->GetClass() &&
-            itr.second.role == m_role &&
-            itr.second.level == m_level)
-        {
-            spec = itr.first;
-        }
-    }
-
-    if (spec == 0)
-    {
-        // Second attempt, but this time we will accept any role, just so
-        // that we have level appropriate spells.
+        // First attempt to find gear. Must be for correct class, level and role.
         for (const auto& itr : sObjectMgr.GetPlayerPremadeSpecTemplates())
         {
             if (itr.second.requiredClass == me->GetClass() &&
@@ -117,7 +106,6 @@ void PartyBotAI::LearnPremadeSpecForClass()
         }
         level--;
     }
-
     
     if (spec != 0)
     {
