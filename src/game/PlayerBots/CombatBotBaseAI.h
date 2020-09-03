@@ -108,6 +108,7 @@ public:
     SpellCastResult DoCastSpell(Unit* pTarget, SpellEntry const* pSpellEntry);
     bool CanTryToCastSpell(Unit const* pTarget, SpellEntry const* pSpellEntry) const;
     bool IsWearingShield() const;
+    bool IsDualWielding() const;
 
     void EquipOrUseNewItem();
     void AddItemToInventory(uint32 itemId);

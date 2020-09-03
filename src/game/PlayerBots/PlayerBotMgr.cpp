@@ -747,6 +747,9 @@ bool ChatHandler::HandlePartyBotAddCommand(char* args)
     if (!pPlayer)
         return false;
 
+    /*if (!pPlayer->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_RESTING))
+        return false;*/
+
     if (!PartyBotAddRequirementCheck(pPlayer, nullptr))
     {
         SetSentErrorMessage(true);

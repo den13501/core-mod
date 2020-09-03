@@ -11165,6 +11165,9 @@ void ObjectMgr::ApplyPremadeGearTemplateToPlayer(uint32 entry, Player* pPlayer) 
             pPlayer->StoreNewItemInBestSlots(item.itemId, 1, item.enchantId);
         }
     }
+
+    // Set skills to max for current level
+    pPlayer->UpdateSkillsToMaxSkillsForLevel();
 }
 
 void ObjectMgr::ApplyPremadeSpecTemplateToPlayer(uint32 entry, Player* pPlayer) const

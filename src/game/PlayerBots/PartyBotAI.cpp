@@ -72,10 +72,11 @@ void PartyBotAI::CloneFromPlayer(Player const* pPlayer)
 
 void PartyBotAI::LearnPremadeSpecForClass()
 {
+    uint8 level;
     uint32 spec = 0;
 
-    // First attempt to find a spec. Must be for correct class, level and role.
-    for (const auto& itr : sObjectMgr.GetPlayerPremadeSpecTemplates())
+    level = m_level;
+    while (spec == 0 && level >= (m_level - 4))
     {
         if (itr.second.requiredClass == me->GetClass() &&
             itr.second.role == m_role &&
@@ -92,38 +93,62 @@ void PartyBotAI::LearnPremadeSpecForClass()
         for (const auto& itr : sObjectMgr.GetPlayerPremadeSpecTemplates())
         {
             if (itr.second.requiredClass == me->GetClass() &&
-                itr.second.level == m_level)
+                itr.second.role == m_role &&
+                itr.second.level == level)
             {
                 spec = itr.first;
+                break;
             }
         }
+
+        if (spec == 0)
+        {
+            // Second attempt, but this time we will accept any role, just so
+            // that we have level appropriate spells.
+            for (const auto& itr : sObjectMgr.GetPlayerPremadeSpecTemplates())
+            {
+                if (itr.second.requiredClass == me->GetClass() &&
+                    itr.second.level == level)
+                {
+                    spec = itr.first;
+                    break;
+                }
+            }
+        }
+        level--;
     }
 
+    
     if (spec != 0)
     {
         sObjectMgr.ApplyPremadeSpecTemplateToPlayer(spec, me);
 
-        // First attempt to find gear. Must be for correct class, level and role.
-        for (const auto& itr : sObjectMgr.GetPlayerPremadeGearTemplates())
+        level = m_level;
+        while (level >= (m_level - 4))
         {
-            if (itr.second.requiredClass == me->GetClass() &&
-                itr.second.role == m_role &&
-                itr.second.level == m_level)
+            // First attempt to find gear. Must be for correct class, level and role.
+            for (const auto& itr : sObjectMgr.GetPlayerPremadeGearTemplates())
             {
-                sObjectMgr.ApplyPremadeGearTemplateToPlayer(itr.first, me);
-                return;
+                if (itr.second.requiredClass == me->GetClass() &&
+                    itr.second.role == m_role &&
+                    itr.second.level == level)
+                {
+                    sObjectMgr.ApplyPremadeGearTemplateToPlayer(itr.first, me);
+                    return;
+                }
             }
-        }
-        // Second attempt, but this time we will accept any role, just so
-        // that we have level appropriate gear.
-        for (const auto& itr : sObjectMgr.GetPlayerPremadeGearTemplates())
-        {
-            if (itr.second.requiredClass == me->GetClass() &&
-                itr.second.level == m_level)
+            // Second attempt, but this time we will accept any role, just so
+            // that we have level appropriate gear.
+            for (const auto& itr : sObjectMgr.GetPlayerPremadeGearTemplates())
             {
-                sObjectMgr.ApplyPremadeGearTemplateToPlayer(itr.first, me);
-                return;
+                if (itr.second.requiredClass == me->GetClass() &&
+                    itr.second.level == level)
+                {
+                    sObjectMgr.ApplyPremadeGearTemplateToPlayer(itr.first, me);
+                    return;
+                }
             }
+            level--;
         }
         return;
     }
@@ -1149,6 +1174,8 @@ void PartyBotAI::UpdateOutOfCombatAI_Hunter()
             return;
     }
 
+    SummonPetIfNeeded();
+
     if (Unit* pVictim = me->GetVictim())
     {
         if (m_spells.hunter.pHuntersMark &&
@@ -2154,6 +2181,14 @@ void PartyBotAI::UpdateInCombatAI_Warrior()
             }
         }
 
+        if (m_spells.warrior.pSunderArmor &&
+            m_role == ROLE_TANK &&
+            CanTryToCastSpell(pVictim, m_spells.warrior.pSunderArmor))
+        {
+            if (DoCastSpell(pVictim, m_spells.warrior.pSunderArmor) == SPELL_CAST_OK)
+                return;
+        }
+
         if (m_spells.warrior.pThunderClap &&
             m_role == ROLE_TANK &&
             CanTryToCastSpell(pVictim, m_spells.warrior.pThunderClap))
@@ -2162,11 +2197,18 @@ void PartyBotAI::UpdateInCombatAI_Warrior()
                 return;
         }
 
-        if (m_spells.warrior.pSunderArmor &&
+        if (m_spells.warrior.pDemoralizingShout &&
             m_role == ROLE_TANK &&
-            CanTryToCastSpell(pVictim, m_spells.warrior.pSunderArmor))
+            CanTryToCastSpell(pVictim, m_spells.warrior.pDemoralizingShout))
         {
-            if (DoCastSpell(pVictim, m_spells.warrior.pSunderArmor) == SPELL_CAST_OK)
+            if (DoCastSpell(pVictim, m_spells.warrior.pDemoralizingShout) == SPELL_CAST_OK)
+                return;
+        }
+
+        if (m_spells.warrior.pRend &&
+            CanTryToCastSpell(pVictim, m_spells.warrior.pRend))
+        {
+            if (DoCastSpell(pVictim, m_spells.warrior.pRend) == SPELL_CAST_OK)
                 return;
         }
 
@@ -2177,13 +2219,6 @@ void PartyBotAI::UpdateInCombatAI_Warrior()
             CanTryToCastSpell(pVictim, m_spells.warrior.pHamstring))
         {
             if (DoCastSpell(pVictim, m_spells.warrior.pHamstring) == SPELL_CAST_OK)
-                return;
-        }
-
-        if (m_spells.warrior.pRend &&
-            CanTryToCastSpell(pVictim, m_spells.warrior.pRend))
-        {
-            if (DoCastSpell(pVictim, m_spells.warrior.pRend) == SPELL_CAST_OK)
                 return;
         }
 
@@ -2246,24 +2281,6 @@ void PartyBotAI::UpdateInCombatAI_Warrior()
                 return;
         }
 
-        if ((me->GetHealthPercent() < 20.0f) ||
-            (m_role == ROLE_TANK && pVictim->GetLevel() >= me->GetLevel()))
-        {
-            if (m_spells.warrior.pDefensiveStance &&
-                CanTryToCastSpell(me, m_spells.warrior.pDefensiveStance))
-            {
-                DoCastSpell(me, m_spells.warrior.pDefensiveStance);
-            }
-        }
-        else
-        {
-            if (m_spells.warrior.pBerserkerStance &&
-                CanTryToCastSpell(me, m_spells.warrior.pBerserkerStance))
-            {
-                DoCastSpell(me, m_spells.warrior.pBerserkerStance);
-            }
-        }
-
         if (m_spells.warrior.pIntercept &&
             CanTryToCastSpell(pVictim, m_spells.warrior.pIntercept))
         {
@@ -2286,12 +2303,27 @@ void PartyBotAI::UpdateInCombatAI_Warrior()
                 return;
         }
 
-        if (m_spells.warrior.pDemoralizingShout &&
-            m_role == ROLE_TANK &&
-            CanTryToCastSpell(pVictim, m_spells.warrior.pDemoralizingShout))
+
+        if (m_role == ROLE_TANK || me->GetHealthPercent() < 20.0f)
         {
-            if (DoCastSpell(pVictim, m_spells.warrior.pDemoralizingShout) == SPELL_CAST_OK)
-                return;
+            if (m_spells.warrior.pDefensiveStance &&
+                CanTryToCastSpell(me, m_spells.warrior.pDefensiveStance))
+            {
+                DoCastSpell(me, m_spells.warrior.pDefensiveStance);
+            }
+        }
+        else if (me->GetHealthPercent() > 60.0f)
+        {
+            if (IsDualWielding() && m_spells.warrior.pBerserkerStance &&
+                CanTryToCastSpell(me, m_spells.warrior.pBerserkerStance))
+            {
+                DoCastSpell(me, m_spells.warrior.pBerserkerStance);
+            }
+            else if (m_spells.warrior.pBattleStance &&
+                CanTryToCastSpell(me, m_spells.warrior.pBattleStance))
+            {
+                DoCastSpell(me, m_spells.warrior.pBattleStance);
+            }
         }
 
         if (me->GetMotionMaster()->GetCurrentMovementGeneratorType() == IDLE_MOTION_TYPE

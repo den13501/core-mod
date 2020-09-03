@@ -26,6 +26,7 @@ enum CombatBotSpells
     SPELL_SUMMON_FELHUNTER = 691,
     SPELL_SUMMON_SUCCUBUS = 712,
     SPELL_TAME_BEAST = 13481,
+    SPELL_PET_REVIVE = 982,
 
     SPELL_DEADLY_POISON = 2823,
     SPELL_INSTANT_POISON = 8679,
@@ -2384,7 +2385,19 @@ void CombatBotBaseAI::SummonPetIfNeeded()
     if (me->GetClass() == CLASS_HUNTER)
     {
         if (me->GetPetGuid())
-            return;
+        {
+            if (me->GetPet()->IsAlive())
+                return;
+            else
+            {
+                if (me->HasSpell(SPELL_PET_REVIVE))
+                {
+                    me->CastSpell(me, SPELL_PET_REVIVE, true);
+                    return;
+                }
+
+            }
+        }
 
         if (me->GetLevel() < 10)
             return;
@@ -2610,6 +2623,18 @@ bool CombatBotBaseAI::IsWearingShield() const
         return false;
 
     if (pItem->GetProto()->InventoryType == INVTYPE_SHIELD)
+        return true;
+
+    return false;
+}
+
+bool CombatBotBaseAI::IsDualWielding() const
+{
+    Item* pItem = me->GetItemByPos(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_OFFHAND);
+    if (!pItem)
+        return false;
+
+    if (pItem->GetProto()->InventoryType == INVTYPE_WEAPON)
         return true;
 
     return false;
