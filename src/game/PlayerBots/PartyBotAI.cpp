@@ -165,7 +165,7 @@ void PartyBotAI::RunAwayFromTarget(Unit* pTarget)
             pLeader->GetMap() == me->GetMap())
         {
             float const distance = me->GetDistance(pLeader);
-            if (distance >= 18.0f)
+            if (distance >= 25.0f)
             {
                 me->GetMotionMaster()->MoveIdle();
                 me->MonsterMove(pLeader->GetPositionX(), pLeader->GetPositionY(), pLeader->GetPositionZ());
@@ -174,7 +174,7 @@ void PartyBotAI::RunAwayFromTarget(Unit* pTarget)
         }
     }
 
-    me->GetMotionMaster()->MoveDistance(pTarget, 8.5f);
+    me->GetMotionMaster()->MoveDistance(pTarget, 12.0f);
 }
 
 bool PartyBotAI::DrinkAndEat()
@@ -259,12 +259,10 @@ bool PartyBotAI::AttackStart(Unit* pVictim)
 
     if (me->Attack(pVictim, true))
     {
-        if (m_role == ROLE_RANGE_DPS &&
-            me->GetPowerPercent(POWER_MANA) > 10.0f &&
-            me->GetCombatDistance(pVictim) > 8.0f)
+        if (m_role == ROLE_RANGE_DPS)
             me->SetCasterChaseDistance(25.0f);
         else if (me->HasDistanceCasterMovement())
-            me->SetCasterChaseDistance(0.0f);
+           me->SetCasterChaseDistance(0.0f);
 
         me->GetMotionMaster()->MoveChase(pVictim, 1.0f, m_role == ROLE_MELEE_DPS ? 3.0f : 0.0f);
         return true;
@@ -1202,6 +1200,20 @@ void PartyBotAI::UpdateInCombatAI_Hunter()
             me->GetMotionMaster()->MoveChase(pVictim, 25.0f);
         }
 
+        if (m_spells.hunter.pFrosTrap &&
+            me->GetDistance(pVictim) <= 25.0f &&
+            CanTryToCastSpell(me, m_spells.hunter.pFrosTrap))
+        {
+            if (DoCastSpell(me, m_spells.hunter.pFrosTrap) == SPELL_CAST_OK)
+                return;
+        }
+
+        if (me->HasSpell(PB_SPELL_AUTO_SHOT) &&
+            !me->IsMoving() &&
+            (me->GetCombatDistance(pVictim) > 8.0f) &&
+            !me->GetCurrentSpell(CURRENT_AUTOREPEAT_SPELL))
+            me->CastSpell(pVictim, PB_SPELL_AUTO_SHOT, false);
+
         if (m_spells.hunter.pVolley &&
            (me->GetEnemyCountInRadiusAround(pVictim, 10.0f) > 2) &&
             CanTryToCastSpell(pVictim, m_spells.hunter.pVolley))
@@ -1322,11 +1334,6 @@ void PartyBotAI::UpdateInCombatAI_Hunter()
             return;
         }
 
-        if (me->HasSpell(PB_SPELL_AUTO_SHOT) &&
-           !me->IsMoving() &&
-           (me->GetCombatDistance(pVictim) > 8.0f) &&
-           !me->GetCurrentSpell(CURRENT_AUTOREPEAT_SPELL))
-            me->CastSpell(pVictim, PB_SPELL_AUTO_SHOT, false);
     }
 }
 

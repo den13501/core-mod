@@ -11163,7 +11163,15 @@ void ObjectMgr::ApplyPremadeGearTemplateToPlayer(uint32 entry, Player* pPlayer) 
                     pPlayer->LearnSpell(proficiencySpellId, false, false);
 
             pPlayer->StoreNewItemInBestSlots(item.itemId, 1, item.enchantId);
+
         }
+    }
+
+    if (Item* pItem = pPlayer->GetItemByPos(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_RANGED))
+    {
+        if (pItem->GetProto()->SubClass == ITEM_SUBCLASS_WEAPON_BOW ||
+            pItem->GetProto()->SubClass == ITEM_SUBCLASS_WEAPON_CROSSBOW )
+        pPlayer->StoreNewItemInBestSlots(2512, 1000);
     }
 
     // Set skills to max for current level

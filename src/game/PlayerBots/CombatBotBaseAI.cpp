@@ -724,6 +724,12 @@ void CombatBotBaseAI::PopulateSpellData()
                         m_spells.hunter.pVolley->Id < pSpellEntry->Id)
                         m_spells.hunter.pVolley = pSpellEntry;
                 }
+                else if (pSpellEntry->SpellName[0].find("Frost Trap") != std::string::npos)
+                {
+                    if (!m_spells.hunter.pFrosTrap ||
+                        m_spells.hunter.pFrosTrap->Id < pSpellEntry->Id)
+                        m_spells.hunter.pFrosTrap = pSpellEntry;
+                }
                 break;
             }
             case CLASS_MAGE:
