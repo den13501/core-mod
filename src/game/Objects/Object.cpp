@@ -1492,12 +1492,25 @@ bool WorldObject::IsWithinLOS(float ox, float oy, float oz, bool checkDynLos, fl
     if (IsInWorld())
     {
         float height = IsUnit() ? ToUnit()->GetCollisionHeight() : 2.f;
-        float heightDiff = abs((GetPositionZ() + height) - (oz + targetHeight));
-        if (heightDiff > 5.0f && heightDiff > (2 * height))
-            return false;
         return GetMap()->isInLineOfSight(GetPositionX(), GetPositionY(), GetPositionZ() + height, ox, oy, oz + targetHeight, checkDynLos);
     }
 
+    return true;
+}
+
+bool WorldObject::IsWithinHeightInMap(WorldObject const* obj) const
+{
+    ASSERT(obj);
+    if (IsInWorld())
+    {
+        float ox, oy, oz;
+        obj->GetPosition(ox, oy, oz);
+        float height = IsUnit() ? ToUnit()->GetCollisionHeight() : 2.f;
+        float targetHeight = obj->IsUnit() ? obj->ToUnit()->GetCollisionHeight() : 2.f;
+
+        float heightDiff = abs((GetPositionZ() + height) - (oz + targetHeight));
+        return heightDiff < 6.0f || heightDiff < (3 * height);
+    }
     return true;
 }
 
