@@ -11173,6 +11173,7 @@ void ObjectMgr::ApplyPremadeGearTemplateToPlayer(uint32 entry, Player* pPlayer) 
                 if (!pPlayer->HasSpell(proficiencySpellId))
                     pPlayer->LearnSpell(proficiencySpellId, false, false);
 
+            pPlayer->SatisfyItemRequirements(pItem);
             pPlayer->StoreNewItemInBestSlots(item.itemId, 1, item.enchantId);
 
         }
