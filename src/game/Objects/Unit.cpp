@@ -5691,6 +5691,9 @@ bool Unit::IsTargetableForAttack(bool inverseAlive /*=false*/, bool isAttackerPl
     if (HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_SELECTABLE))
         return false;
 
+    if (HasAuraType(SPELL_AURA_MOD_UNATTACKABLE))
+        return false;
+
     if (isAttackerPlayer && HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PLAYER))
         return false;
 
