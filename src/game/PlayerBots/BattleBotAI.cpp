@@ -108,7 +108,7 @@ void BattleBotAI::AddPremadeGearAndSpells()
                 if (pItem->GetProto()->SubClass == ITEM_SUBCLASS_WEAPON_GUN)
                     me->StoreNewItemInBestSlots(BB_ITEM_BULLET, 200);
                 else
-                    me->StoreNewItemInBestSlots(BB_ITEM_ARROW, 200);
+                    me->StoreNewItemInBestSlots(BB_ITEM_ARROW, 1000);
             }
             break;
         }
@@ -229,8 +229,8 @@ bool BattleBotAI::DrinkAndEat()
     if (me->GetVictim())
         return false;
 
-    bool const needToEat = me->GetHealthPercent() < 100.0f && !(me->GetBattleGround() && me->GetBattleGround()->GetStatus() == STATUS_WAIT_JOIN);
-    bool const needToDrink = (me->GetPowerType() == POWER_MANA) && (me->GetPowerPercent(POWER_MANA) < 100.0f);
+    bool const needToEat = me->GetHealthPercent() < 95.0f && !(me->GetBattleGround() && me->GetBattleGround()->GetStatus() == STATUS_WAIT_JOIN);
+    bool const needToDrink = (me->GetPowerType() == POWER_MANA) && (me->GetPowerPercent(POWER_MANA) < 95.0f);
 
     if (!needToEat && !needToDrink)
         return false;
@@ -1356,6 +1356,8 @@ void BattleBotAI::UpdateOutOfCombatAI_Hunter()
         if (DoCastSpell(me, m_spells.hunter.pAspectOfTheCheetah) == SPELL_CAST_OK)
             return;
     }
+
+    SummonPetIfNeeded();
 
     if (Unit* pVictim = me->GetVictim())
     {

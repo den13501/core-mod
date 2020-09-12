@@ -38,6 +38,7 @@ BattleGroundWS::BattleGroundWS()
     m_StartMessageIds[BG_STARTING_EVENT_SECOND] = LANG_BG_WS_START_ONE_MINUTE;
     m_StartMessageIds[BG_STARTING_EVENT_THIRD]  = LANG_BG_WS_START_HALF_MINUTE;
     m_StartMessageIds[BG_STARTING_EVENT_FOURTH] = LANG_BG_WS_HAS_BEGUN;
+    m_BattleTimer = 0;
 }
 
 BattleGroundWS::~BattleGroundWS()
@@ -46,8 +47,34 @@ BattleGroundWS::~BattleGroundWS()
 
 void BattleGroundWS::Update(uint32 diff)
 {
+    Team winner = TEAM_NONE;
+
     if (GetStatus() == STATUS_IN_PROGRESS)
     {
+        m_BattleTimer += diff;
+
+        if (m_BattleTimer > BG_WS_MAX_BG_TIME)
+        {
+            if (GetTeamScore(ALLIANCE) > GetTeamScore(HORDE))
+                winner = ALLIANCE;
+            else if (GetTeamScore(ALLIANCE) < GetTeamScore(HORDE))
+                winner = HORDE;
+            else
+                winner = urand(0, 1) > 0 ? ALLIANCE : HORDE;
+
+            if (winner)
+            {
+                UpdateWorldState(BG_WS_FLAG_UNK_ALLIANCE, 0);
+                UpdateWorldState(BG_WS_FLAG_UNK_HORDE, 0);
+                UpdateWorldState(BG_WS_FLAG_STATE_ALLIANCE, 1);
+                UpdateWorldState(BG_WS_FLAG_STATE_HORDE, 1);
+
+                EndBattleGround(winner);
+            }
+
+
+        }
+
         if (m_FlagState[BG_TEAM_ALLIANCE] == BG_WS_FLAG_STATE_WAIT_RESPAWN)
         {
             m_FlagsTimer[BG_TEAM_ALLIANCE] -= diff;

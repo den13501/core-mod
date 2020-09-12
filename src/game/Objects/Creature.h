@@ -199,7 +199,7 @@ struct CreatureData
     float wander_distance = 0.0f;
     float health_percent = 100.0f;
     float mana_percent = 100.0f;
-    uint8 movement_type = 0;
+    uint32 movement_type = 0;
     uint32 spawn_flags = 0;
     float visibility_mod = 0.0f;
 

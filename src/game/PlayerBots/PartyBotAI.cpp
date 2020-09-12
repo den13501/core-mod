@@ -164,8 +164,9 @@ void PartyBotAI::RunAwayFromTarget(Unit* pTarget)
         if (pLeader->IsInWorld() &&
             pLeader->GetMap() == me->GetMap())
         {
-            float const distance = me->GetDistance(pLeader);
-            if (distance >= 25.0f)
+            float leaderDistance = me->GetDistance(pLeader);
+            float leadToMonsDist = pLeader->GetDistance(pTarget);
+            if (leaderDistance > 15.0f || leadToMonsDist > 15.0f)
             {
                 me->GetMotionMaster()->MoveIdle();
                 me->MonsterMove(pLeader->GetPositionX(), pLeader->GetPositionY(), pLeader->GetPositionZ());
