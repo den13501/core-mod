@@ -1388,6 +1388,12 @@ void CombatBotBaseAI::PopulateSpellData()
                         m_spells.warrior.pPiercingHowl->Id < pSpellEntry->Id)
                         m_spells.warrior.pPiercingHowl = pSpellEntry;
                 }
+                else if (pSpellEntry->SpellName[0].find("Revenge") != std::string::npos)
+                {
+                if (!m_spells.warrior.pRevenge ||
+                    m_spells.warrior.pRevenge->Id < pSpellEntry->Id)
+                    m_spells.warrior.pRevenge = pSpellEntry;
+                }
                 break;
             }
             case CLASS_ROGUE:
