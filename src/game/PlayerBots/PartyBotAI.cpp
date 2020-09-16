@@ -348,7 +348,7 @@ Player* PartyBotAI::SelectShieldTarget() const
             if (pMember == me)
                 continue;
 
-            if ((pMember->GetHealthPercent() < 90.0f) &&
+            if ((pMember->GetHealthPercent() < 60.0f) &&
                 !pMember->GetAttackers().empty() &&
                 !pMember->IsImmuneToMechanic(MECHANIC_SHIELD))
                 return pMember;
@@ -1746,7 +1746,7 @@ void PartyBotAI::UpdateInCombatAI_Priest()
         }
 
         // Direct heal more seriously injured.
-        if (Unit* pTarget = SelectHealTarget(75.0f, 75.0f))
+        if (Unit* pTarget = SelectHealTarget(70.0f, 70.0f))
             if (HealInjuredTargetDirect(pTarget))
                 return;
 
@@ -2169,6 +2169,10 @@ void PartyBotAI::UpdateInCombatAI_Warrior()
                 return;
         }
 
+        // Go on only if 15 rage is available so the most relevant skills can be used
+        if (me->GetPowerPercent(POWER_RAGE) < 15.0f)
+            return;
+
         if (m_spells.warrior.pConcussionBlow &&
            (pVictim->IsNonMeleeSpellCasted() || pVictim->IsMoving() || (me->GetHealthPercent() < 50.0f)) &&
             CanTryToCastSpell(pVictim, m_spells.warrior.pConcussionBlow))
@@ -2176,10 +2180,6 @@ void PartyBotAI::UpdateInCombatAI_Warrior()
             if (DoCastSpell(pVictim, m_spells.warrior.pConcussionBlow) == SPELL_CAST_OK)
                 return;
         }
-
-        // Go on only if 12 rage is available so the most relevant skills can be used
-        if (me->GetPowerPercent(POWER_RAGE) < 12.0f)
-            return;
 
         if (m_spells.warrior.pSunderArmor &&
             m_role == ROLE_TANK &&
@@ -2190,7 +2190,7 @@ void PartyBotAI::UpdateInCombatAI_Warrior()
         }
 
         if (m_spells.warrior.pThunderClap &&
-            m_role == ROLE_TANK &&
+            me->GetEnemyCountInRadiusAround(pVictim, 8.0f) > 1 &&
             CanTryToCastSpell(pVictim, m_spells.warrior.pThunderClap))
         {
             if (DoCastSpell(pVictim, m_spells.warrior.pThunderClap) == SPELL_CAST_OK)
@@ -2242,6 +2242,14 @@ void PartyBotAI::UpdateInCombatAI_Warrior()
                 if (DoCastSpell(pVictim, m_spells.warrior.pShieldSlam) == SPELL_CAST_OK)
                     return;
             }
+        }
+
+        if (m_spells.warrior.pDisarm &&
+            IsMeleeWeaponClass(pVictim->GetClass()) &&
+            CanTryToCastSpell(pVictim, m_spells.warrior.pDisarm))
+        {
+            if (DoCastSpell(pVictim, m_spells.warrior.pDisarm) == SPELL_CAST_OK)
+                return;
         }
 
         if (m_role != ROLE_TANK &&
@@ -2311,6 +2319,7 @@ void PartyBotAI::UpdateInCombatAI_Warrior()
                 return;
         }
 
+
         if (m_spells.warrior.pIntercept &&
             CanTryToCastSpell(pVictim, m_spells.warrior.pIntercept))
         {
@@ -2318,18 +2327,28 @@ void PartyBotAI::UpdateInCombatAI_Warrior()
                 return;
         }
 
-        if (m_spells.warrior.pWhirlwind &&
-            CanTryToCastSpell(pVictim, m_spells.warrior.pWhirlwind))
+        if (me->GetEnemyCountInRadiusAround(pVictim, 8.0f) > 1)
         {
-            if (DoCastSpell(pVictim, m_spells.warrior.pWhirlwind) == SPELL_CAST_OK)
-                return;
+
+            if (m_spells.warrior.pWhirlwind &&
+                CanTryToCastSpell(pVictim, m_spells.warrior.pWhirlwind))
+            {
+                if (DoCastSpell(pVictim, m_spells.warrior.pWhirlwind) == SPELL_CAST_OK)
+                    return;
+            }
+
+            if (m_spells.warrior.pCleave &&
+                CanTryToCastSpell(pVictim, m_spells.warrior.pCleave))
+            {
+                if (DoCastSpell(pVictim, m_spells.warrior.pCleave) == SPELL_CAST_OK)
+                    return;
+            }
         }
 
-        if (m_spells.warrior.pDisarm &&
-            IsMeleeWeaponClass(pVictim->GetClass()) &&
-            CanTryToCastSpell(pVictim, m_spells.warrior.pDisarm))
+        if (m_spells.warrior.pHeroicStrike &&
+            CanTryToCastSpell(pVictim, m_spells.warrior.pHeroicStrike))
         {
-            if (DoCastSpell(pVictim, m_spells.warrior.pDisarm) == SPELL_CAST_OK)
+            if (DoCastSpell(pVictim, m_spells.warrior.pHeroicStrike) == SPELL_CAST_OK)
                 return;
         }
 
@@ -2339,27 +2358,6 @@ void PartyBotAI::UpdateInCombatAI_Warrior()
             me->GetMotionMaster()->MoveChase(pVictim);
         }
 
-        if (me->GetPower(POWER_RAGE) > 20)
-        {
-            if (me->GetEnemyCountInRadiusAround(pVictim, 8.0f) > 1)
-            {
-                if (m_spells.warrior.pHeroicStrike &&
-                    CanTryToCastSpell(pVictim, m_spells.warrior.pHeroicStrike))
-                {
-                    if (DoCastSpell(pVictim, m_spells.warrior.pHeroicStrike) == SPELL_CAST_OK)
-                        return;
-                }
-            }
-            else
-            {
-                if (m_spells.warrior.pCleave &&
-                    CanTryToCastSpell(pVictim, m_spells.warrior.pCleave))
-                {
-                    if (DoCastSpell(pVictim, m_spells.warrior.pCleave) == SPELL_CAST_OK)
-                        return;
-                }
-            }
-        }
     }
     else // no victim
     {
