@@ -72,6 +72,16 @@ void BattleBotAI::AddPremadeGearAndSpells()
             (level < sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL) && itr.second.level == (level-1))))
             vSpecs.push_back(&itr.second);
     }
+    // Use lower level spec template if there are no templates for the current level.
+    if (vSpecs.empty())
+    {
+        for (const auto& itr : sObjectMgr.GetPlayerPremadeSpecTemplates())
+        {
+            if (itr.second.requiredClass == me->GetClass() &&
+                itr.second.level < level)
+                vSpecs.push_back(&itr.second);
+        }
+    }
     if (!vSpecs.empty())
     {
         PlayerPremadeSpecTemplate const* pSpec = SelectRandomContainerElement(vSpecs);
@@ -89,6 +99,16 @@ void BattleBotAI::AddPremadeGearAndSpells()
             (itr.second.level == level ||
             (level < sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL) && itr.second.level == (level-1))))
             vGear.push_back(&itr.second);
+    }
+    // Use lower level gear template if there are no templates for the current level.
+    if (vGear.empty())
+    {
+        for (const auto& itr : sObjectMgr.GetPlayerPremadeGearTemplates())
+        {
+            if (itr.second.requiredClass == me->GetClass() &&
+                itr.second.level < level)
+                vGear.push_back(&itr.second);
+        }
     }
     if (!vGear.empty())
     {
