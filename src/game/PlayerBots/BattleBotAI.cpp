@@ -57,11 +57,19 @@ void BattleBotAI::AddPremadeGearAndSpells()
 {
     uint8 const level = m_level ? m_level : sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL);
 
+    if (level != me->GetLevel())
+    {
+        me->GiveLevel(level);
+        me->InitTalentForLevel();
+        me->SetUInt32Value(PLAYER_XP, 0);
+    }
+
     std::vector<PlayerPremadeSpecTemplate const*> vSpecs;
     for (const auto& itr : sObjectMgr.GetPlayerPremadeSpecTemplates())
     {
         if (itr.second.requiredClass == me->GetClass() &&
-            itr.second.level == level)
+            (itr.second.level == level || 
+            (level < sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL) && itr.second.level == (level-1))))
             vSpecs.push_back(&itr.second);
     }
     if (!vSpecs.empty())
@@ -78,24 +86,14 @@ void BattleBotAI::AddPremadeGearAndSpells()
     for (const auto& itr : sObjectMgr.GetPlayerPremadeGearTemplates())
     {
         if (itr.second.requiredClass == me->GetClass() &&
-            itr.second.level == level)
+            (itr.second.level == level ||
+            (level < sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL) && itr.second.level == (level-1))))
             vGear.push_back(&itr.second);
     }
     if (!vGear.empty())
     {
         uint32 gearId = 0;
-        // Try to find a role appropriate gear template.
-        for (const auto itr : vGear)
-        {
-            if (itr->role == m_role)
-            {
-                gearId = itr->entry;
-                break;
-            }
-        }
-        // There is no gear template for this role, pick randomly.
-        if (!gearId)
-            gearId = SelectRandomContainerElement(vGear)->entry;
+        gearId = SelectRandomContainerElement(vGear)->entry;
         sObjectMgr.ApplyPremadeGearTemplateToPlayer(gearId, me);
     } 
 
@@ -114,13 +112,7 @@ void BattleBotAI::AddPremadeGearAndSpells()
         }
     }
 
-    if (level != me->GetLevel())
-    {
-        sLog.outError("BattleBotAI::AddPremadeGearAndSpells - No level %u templates found!", level);
-        me->GiveLevel(level);
-        me->InitTalentForLevel();
-        me->SetUInt32Value(PLAYER_XP, 0);
-    }
+    
 }
 
 uint32 BattleBotAI::GetMountSpellId() const
@@ -1833,7 +1825,7 @@ void BattleBotAI::UpdateInCombatAI_Priest()
 
     // Heal
     if (me->GetShapeshiftForm() == FORM_NONE &&
-        FindAndHealInjuredAlly(40.0f))
+        FindAndHealInjuredAlly(60.0f,60.0f))
         return;
 
     // Dispels
@@ -2809,7 +2801,7 @@ void BattleBotAI::UpdateInCombatAI_Druid()
         }
 
         // Heal
-        if (FindAndHealInjuredAlly(80.0f))
+        if (FindAndHealInjuredAlly(60.0f,60.0f))
             return;
 
         // Dispels

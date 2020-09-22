@@ -11174,8 +11174,6 @@ void ObjectMgr::ApplyPremadeGearTemplateToPlayer(uint32 entry, Player* pPlayer) 
         pPlayer->StoreNewItemInBestSlots(2512, 1000);
     }
 
-    // Set skills to max for current level
-    pPlayer->UpdateSkillsToMaxSkillsForLevel();
 }
 
 void ObjectMgr::ApplyPremadeSpecTemplateToPlayer(uint32 entry, Player* pPlayer) const
@@ -11193,7 +11191,7 @@ void ObjectMgr::ApplyPremadeSpecTemplateToPlayer(uint32 entry, Player* pPlayer) 
         return;
     }
 
-    if (pPlayer->GetLevel() != itr->second.level)
+    if (pPlayer->GetLevel() < itr->second.level)
     {
         pPlayer->GiveLevel(itr->second.level);
         pPlayer->InitTalentForLevel();

@@ -1037,7 +1037,7 @@ bool HandlePartyBotComeToMeHelper(Player* pBot, Player* pPlayer)
                 pBot->SetStandState(UNIT_STAND_STATE_STAND);
 
             pBot->InterruptSpellsWithInterruptFlags(SPELL_INTERRUPT_FLAG_MOVEMENT);
-            pBot->MonsterMove(pPlayer->GetPositionX(), pPlayer->GetPositionY(), pPlayer->GetPositionZ());
+            pAI->MoveToTarget(pPlayer);
             return true;
         }
     }
@@ -1309,7 +1309,7 @@ bool ChatHandler::HandleBattleBotAddCommand(char* args, uint8 bg)
     }
 
     Team botTeam = HORDE;
-    uint32 botLevel = sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL);
+    uint32 botLevel = pPlayer->GetLevel();
     std::string option;
     if (char* arg1 = ExtractArg(&args))
     {
@@ -1325,7 +1325,11 @@ bool ChatHandler::HandleBattleBotAddCommand(char* args, uint8 bg)
             return false;
         }
 
-        ExtractUInt32(&args, botLevel);
+        if (!ExtractUInt32(&args, botLevel))
+        {
+            if (botLevel < sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL))
+                botLevel = ((botLevel / 10) * 10) + urand(7, 9);
+        }
     }
 
     std::vector<uint32> dpsClasses = { CLASS_WARRIOR, CLASS_HUNTER, CLASS_ROGUE, CLASS_MAGE, CLASS_WARLOCK, CLASS_PRIEST, CLASS_DRUID };

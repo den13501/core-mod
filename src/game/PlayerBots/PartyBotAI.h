@@ -32,6 +32,7 @@ public:
     void OnPacketReceived(WorldPacket const* packet) final;
     void SendFakePacket(uint16 opcode) final;
 
+    uint32 GetMountSpellId() const;
     void CloneFromPlayer(Player const* pPlayer);
     void AddToPlayerGroup();
     void LearnPremadeSpecForClass();
@@ -45,6 +46,7 @@ public:
     bool DrinkAndEat();
     bool ShouldAutoRevive() const;
     void RunAwayFromTarget(Unit* pTarget);
+    void MoveToTarget(Unit* pTarget);
     bool EnterCombatDruidForm();
 
     void UpdateInCombatAI() final;
