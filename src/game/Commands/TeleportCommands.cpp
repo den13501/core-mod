@@ -1317,7 +1317,7 @@ bool ChatHandler::HandleGonameCommand(char* args)
         float x, y, z;
         pTarget->GetPosition(x, y, z);
 
-        pPlayer->TeleportTo(pTarget->GetMapId(), x, y, z + 5.0f, pPlayer->GetAngle(pTarget), teleFlags);
+        pPlayer->TeleportTo(pTarget->GetMapId(), x, y, z + 1.0f, pPlayer->GetAngle(pTarget), teleFlags);
     }
     else
     {

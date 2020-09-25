@@ -2131,9 +2131,11 @@ bool CombatBotBaseAI::HealInjuredTarget(Unit* pTarget)
         if (HealInjuredTargetPeriodic(pTarget))
             return true;
     }
-
-    if (HealInjuredTargetDirect(pTarget))
-        return true;
+    else if (pTarget->GetHealthPercent() < 80.0f)
+    {
+        if(HealInjuredTargetDirect(pTarget))
+            return true;
+    }
 
     return false;
 }

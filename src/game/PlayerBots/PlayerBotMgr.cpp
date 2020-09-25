@@ -766,7 +766,7 @@ bool ChatHandler::HandlePartyBotAddCommand(char* args)
     }
 
     uint8 botClass = 0;
-    uint32 botLevel = pPlayer->GetLevel();
+    uint32 botLevel = pPlayer->GetLevel() + urand(-1,1);
     CombatBotRoles botRole = ROLE_INVALID;
 
     if (char* arg1 = ExtractArg(&args))
@@ -960,7 +960,7 @@ bool ChatHandler::HandlePartyBotAttackStartCommand(char* args)
             {
                 if (PartyBotAI* pAI = dynamic_cast<PartyBotAI*>(pMember->AI()))
                 {
-                    if (pMember->IsValidAttackTarget(pTarget))
+                    if (pMember->IsValidAttackTarget(pTarget) && pAI->m_role != ROLE_HEALER)
                         pAI->AttackStart(pTarget);
                 }
             }            
@@ -1107,8 +1107,14 @@ bool ChatHandler::HandlePartyBotUseGObjectCommand(char* args)
 {
     Player* pPlayer = GetSession()->GetPlayer();
     Player* pTarget = GetSelectedPlayer();
+    GameObject* pGo;
+    uint32 objentry;
 
-    GameObject* pGo = getSelectedGameObject();
+    if(ExtractUInt32(&args, objentry))
+        pGo = pTarget->FindNearestGameObject(objentry, 10.0f);
+    else
+        pGo = getSelectedGameObject();
+
     if (!pGo)
     {
         SendSysMessage(LANG_COMMAND_NOGAMEOBJECTFOUND);

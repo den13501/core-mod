@@ -15150,7 +15150,7 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
                     SetAcceptWhispers(true);
                 break;
         }
-        SetCheatGod(true);
+        //SetCheatGod(true);
     }
 
     if (extraflags & PLAYER_EXTRA_WHISP_RESTRICTION)

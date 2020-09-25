@@ -578,8 +578,8 @@ void PartyBotAI::UpdateAI(uint32 const diff)
         // Remain idle until we can join battleground.
         return;
     }
-
-    if (pLeader->IsTaxiFlying())
+    
+    if (pLeader->IsTaxiFlying() || pLeader->GetTransport())
     {
         if (me->GetMotionMaster()->GetCurrentMovementGeneratorType())
             me->GetMotionMaster()->MoveIdle();
@@ -801,23 +801,6 @@ void PartyBotAI::UpdateInCombatAI()
             }
         }
     }
-    else if (m_role == ROLE_MELEE_DPS || m_role == ROLE_RANGE_DPS)
-    {
-        if (Unit* pVictim = me->GetVictim())
-        {
-            if (Player* pLeader = GetPartyLeader())
-            {
-                if (Unit* newTarget = SelectAttackTarget(pLeader))
-                {
-                    if (newTarget != pVictim)
-                    {
-                        me->AttackStop(true);
-                        AttackStart(newTarget);
-                    }
-                }
-            }
-        }
-    }
 
     switch (me->GetClass())
     {
@@ -848,6 +831,15 @@ void PartyBotAI::UpdateInCombatAI()
         case CLASS_DRUID:
             UpdateInCombatAI_Druid();
             break;
+    }
+
+    if (m_role == ROLE_TANK || m_role == ROLE_MELEE_DPS)
+    {
+        Unit* pVictim = me->GetVictim();
+        if (pVictim && !pVictim->IsWithinMeleeRange(me))
+        {
+            me->GetMotionMaster()->MoveChase(pVictim, 1.0f, 3.0f);
+        }
     }
 }
 
@@ -891,7 +883,7 @@ void PartyBotAI::UpdateOutOfCombatAI_Paladin()
     }
 
     if (m_role == ROLE_HEALER &&
-        FindAndHealInjuredAlly())
+        FindAndHealInjuredAlly(100.0f,90.0f))
         return;
 }
 
@@ -1075,11 +1067,6 @@ void PartyBotAI::UpdateInCombatAI_Paladin()
                 if (DoCastSpell(pVictim, m_spells.paladin.pHolyWrath) == SPELL_CAST_OK)
                     return;
             }
-            /*if (me->GetMotionMaster()->GetCurrentMovementGeneratorType() == IDLE_MOTION_TYPE
-                && !me->CanReachWithMeleeAutoAttack(pVictim))
-            {
-                me->GetMotionMaster()->MoveChase(pVictim);
-            }*/
         }
     }
 
@@ -1110,7 +1097,7 @@ void PartyBotAI::UpdateOutOfCombatAI_Shaman()
     }
 
     if (m_role == ROLE_HEALER &&
-        FindAndHealInjuredAlly())
+        FindAndHealInjuredAlly(100.0f,90.0f))
         return;
 
     if (me->GetVictim())
@@ -1775,7 +1762,7 @@ void PartyBotAI::UpdateOutOfCombatAI_Priest()
     }
 
     if (m_role == ROLE_HEALER &&
-        FindAndHealInjuredAlly())
+        FindAndHealInjuredAlly(100.0f,90.0f))
         return;
 
     if (me->GetVictim())
@@ -1784,12 +1771,6 @@ void PartyBotAI::UpdateOutOfCombatAI_Priest()
 
 void PartyBotAI::UpdateInCombatAI_Priest()
 {
-    if (m_spells.priest.pPowerWordShield &&
-        CanTryToCastSpell(me, m_spells.priest.pPowerWordShield))
-    {
-        if (DoCastSpell(me, m_spells.priest.pPowerWordShield) == SPELL_CAST_OK)
-            return;
-    }
 
     if (!me->GetAttackers().empty() &&
         m_role != ROLE_TANK)
@@ -1798,6 +1779,13 @@ void PartyBotAI::UpdateInCombatAI_Priest()
             CanTryToCastSpell(me, m_spells.priest.pFade))
         {
             if (DoCastSpell(me, m_spells.priest.pFade) == SPELL_CAST_OK)
+                return;
+        }
+
+        if (m_spells.priest.pPowerWordShield &&
+            CanTryToCastSpell(me, m_spells.priest.pPowerWordShield))
+        {
+            if (DoCastSpell(me, m_spells.priest.pPowerWordShield) == SPELL_CAST_OK)
                 return;
         }
 
@@ -2272,18 +2260,32 @@ void PartyBotAI::UpdateInCombatAI_Warrior()
         if (me->GetPowerPercent(POWER_RAGE) < 15.0f)
             return;
 
-        if (m_spells.warrior.pConcussionBlow &&
-           (pVictim->IsNonMeleeSpellCasted() || pVictim->IsMoving() || (me->GetHealthPercent() < 50.0f)) &&
-            CanTryToCastSpell(pVictim, m_spells.warrior.pConcussionBlow))
-        {
-            if (DoCastSpell(pVictim, m_spells.warrior.pConcussionBlow) == SPELL_CAST_OK)
-                return;
-        }
-
         if (m_spells.warrior.pShieldSlam &&
             CanTryToCastSpell(pVictim, m_spells.warrior.pShieldSlam))
         {
             if (DoCastSpell(pVictim, m_spells.warrior.pShieldSlam) == SPELL_CAST_OK)
+                return;
+        }
+
+        if (m_spells.warrior.pMortalStrike &&
+            CanTryToCastSpell(pVictim, m_spells.warrior.pMortalStrike))
+        {
+            if (DoCastSpell(pVictim, m_spells.warrior.pMortalStrike) == SPELL_CAST_OK)
+                return;
+        }
+
+        if (m_spells.warrior.pBloodthirst &&
+            CanTryToCastSpell(pVictim, m_spells.warrior.pBloodthirst))
+        {
+            if (DoCastSpell(pVictim, m_spells.warrior.pBloodthirst) == SPELL_CAST_OK)
+                return;
+        }
+
+        if (m_spells.warrior.pConcussionBlow &&
+            (pVictim->IsNonMeleeSpellCasted() || pVictim->IsMoving() || (me->GetHealthPercent() < 50.0f)) &&
+            CanTryToCastSpell(pVictim, m_spells.warrior.pConcussionBlow))
+        {
+            if (DoCastSpell(pVictim, m_spells.warrior.pConcussionBlow) == SPELL_CAST_OK)
                 return;
         }
 
@@ -2404,20 +2406,6 @@ void PartyBotAI::UpdateInCombatAI_Warrior()
             }
         }
 
-        if (m_spells.warrior.pMortalStrike &&
-            CanTryToCastSpell(pVictim, m_spells.warrior.pMortalStrike))
-        {
-            if (DoCastSpell(pVictim, m_spells.warrior.pMortalStrike) == SPELL_CAST_OK)
-                return;
-        }
-
-        if (m_spells.warrior.pBloodthirst &&
-            CanTryToCastSpell(pVictim, m_spells.warrior.pBloodthirst))
-        {
-            if (DoCastSpell(pVictim, m_spells.warrior.pBloodthirst) == SPELL_CAST_OK)
-                return;
-        }
-
 
         if (m_spells.warrior.pIntercept &&
             CanTryToCastSpell(pVictim, m_spells.warrior.pIntercept))
@@ -2448,12 +2436,6 @@ void PartyBotAI::UpdateInCombatAI_Warrior()
             if (DoCastSpell(pVictim, m_spells.warrior.pHeroicStrike) == SPELL_CAST_OK)
                 return;
         }
-
-        /*if (me->GetMotionMaster()->GetCurrentMovementGeneratorType() == IDLE_MOTION_TYPE
-            && !me->CanReachWithMeleeAutoAttack(pVictim))
-        {
-            me->GetMotionMaster()->MoveChase(pVictim);
-        }*/
 
     }
     else // no victim
@@ -2780,7 +2762,7 @@ void PartyBotAI::UpdateOutOfCombatAI_Druid()
             return;
 
         if (m_role == ROLE_HEALER &&
-            FindAndHealInjuredAlly())
+            FindAndHealInjuredAlly(100.0f,90.0f))
             return;
     }
     else if (me->GetShapeshiftForm() == FORM_CAT)
@@ -2899,12 +2881,6 @@ void PartyBotAI::UpdateInCombatAI_Druid()
             if (me->HasDistanceCasterMovement())
                 me->SetCasterChaseDistance(0.0f);
 
-            if (me->GetMotionMaster()->GetCurrentMovementGeneratorType() == IDLE_MOTION_TYPE
-                && !me->CanReachWithMeleeAutoAttack(pVictim))
-            {
-                me->GetMotionMaster()->MoveChase(pVictim);
-            }
-
             if (me->HasAuraType(SPELL_AURA_MOD_STEALTH))
             {
                 if (m_spells.druid.pPounce &&
@@ -3002,12 +2978,6 @@ void PartyBotAI::UpdateInCombatAI_Druid()
         {
             if (me->HasDistanceCasterMovement())
                 me->SetCasterChaseDistance(0.0f);
-
-            if (me->GetMotionMaster()->GetCurrentMovementGeneratorType() == IDLE_MOTION_TYPE
-                && !me->CanReachWithMeleeAutoAttack(pVictim))
-            {
-                me->GetMotionMaster()->MoveChase(pVictim);
-            }
 
             if (m_spells.druid.pFeralCharge &&
                 CanTryToCastSpell(pVictim, m_spells.druid.pFeralCharge))
