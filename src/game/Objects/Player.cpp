@@ -12202,8 +12202,6 @@ void Player::PrepareGossipMenu(WorldObject* pSource, uint32 menuId)
     if (pMenuItemBounds.first == pMenuItemBounds.second && defaultMenu)
         pMenuItemBounds = sObjectMgr.GetGossipMenuItemsMapBounds(0);
 
-    bool canTalkToCredit = pSource->GetTypeId() == TYPEID_UNIT;
-
     for (GossipMenuItemsMap::const_iterator itr = pMenuItemBounds.first; itr != pMenuItemBounds.second; ++itr)
     {
         bool hasMenuItem = true;
@@ -12233,8 +12231,6 @@ void Player::PrepareGossipMenu(WorldObject* pSource, uint32 menuId)
             switch (itr->second.option_id)
             {
                 case GOSSIP_OPTION_GOSSIP:
-                    if (itr->second.action_menu_id != 0)    // has sub menu (or close gossip), so do not "talk" with this NPC yet
-                        canTalkToCredit = false;
                     break;
                 case GOSSIP_OPTION_QUESTGIVER:
                     hasMenuItem = false;
@@ -12358,28 +12354,6 @@ void Player::PrepareGossipMenu(WorldObject* pSource, uint32 menuId)
 
     if (canSeeQuests)
         PrepareQuestMenu(pSource->GetObjectGuid());
-
-    if (canTalkToCredit)
-    {
-        if (pSource->HasFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP))
-            TalkedToCreature(pSource->GetEntry(), pSource->GetObjectGuid());
-    }
-
-    // some gossips aren't handled in normal way ... so we need to do it this way .. TODO: handle it in normal way ;-)
-    /*if (pMenu->Empty())
-    {
-        if (pCreature->HasFlag(UNIT_NPC_FLAGS,UNIT_NPC_FLAG_TRAINER))
-        {
-            // output error message if need
-            pCreature->IsTrainerOf(this, true);
-        }
-
-        if (pCreature->HasFlag(UNIT_NPC_FLAGS,UNIT_NPC_FLAG_BATTLEMASTER))
-        {
-            // output error message if need
-            pCreature->CanInteractWithBattleMaster(this, true);
-        }
-    }*/
 }
 
 void Player::SendPreparedGossip(WorldObject* pSource)
@@ -12562,13 +12536,14 @@ uint32 Player::GetGossipTextId(WorldObject* pSource)
     return DEFAULT_GOSSIP_MESSAGE;
 }
 
-uint32 Player::GetGossipTextId(uint32 menuId, WorldObject const* source) const
+uint32 Player::GetGossipTextId(uint32 menuId, WorldObject* pSource)
 {
     uint32 textId = DEFAULT_GOSSIP_MESSAGE;
 
     if (!menuId)
         return textId;
 
+    uint32 scriptId = 0;
     uint32 lastConditionId = 0;
 
     GossipMenusMapBounds pMenuBounds = sObjectMgr.GetGossipMenusMapBounds(menuId);
@@ -12576,13 +12551,18 @@ uint32 Player::GetGossipTextId(uint32 menuId, WorldObject const* source) const
     {
         // Take the text that has the highest conditionId of all fitting
         // No condition and no text with condition found OR higher and fitting condition found
-        if ((!itr->second.conditionId && !lastConditionId) ||
-                (itr->second.conditionId > lastConditionId && sObjectMgr.IsConditionSatisfied(itr->second.conditionId, this, GetMap(), source, CONDITION_FROM_GOSSIP_MENU)))
+        if ((!itr->second.condition_id && !lastConditionId) ||
+                (itr->second.condition_id > lastConditionId && sObjectMgr.IsConditionSatisfied(itr->second.condition_id, this, GetMap(), pSource, CONDITION_FROM_GOSSIP_MENU)))
         {
-            lastConditionId = itr->second.conditionId;
+            lastConditionId = itr->second.condition_id;
             textId = itr->second.text_id;
+            scriptId = itr->second.script_id;
         }
     }
+
+    // Start related script
+    if (scriptId)
+        GetMap()->ScriptsStart(sGossipScripts, scriptId, pSource, this);
 
     return textId;
 }
