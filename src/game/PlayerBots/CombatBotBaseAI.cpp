@@ -2809,7 +2809,10 @@ void CombatBotBaseAI::SummonPetIfNeeded()
 
 bool CombatBotBaseAI::CanTryToCastSpell(Unit const* pTarget, SpellEntry const* pSpellEntry, uint32 maxStack) const
 {
-    if (!IsSpellReady(pSpellEntry))
+    if (!me->IsSpellReady(pSpellEntry->Id))
+        return false;
+
+    if (me->HasGCD(pSpellEntry))
         return false;
 
     if (pTarget->IsImmuneToSpell(pSpellEntry, false))
