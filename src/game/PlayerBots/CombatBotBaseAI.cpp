@@ -730,6 +730,30 @@ void CombatBotBaseAI::PopulateSpellData()
                         m_spells.hunter.pFrosTrap->Id < pSpellEntry->Id)
                         m_spells.hunter.pFrosTrap = pSpellEntry;
                 }
+                else if (pSpellEntry->SpellName[0].find("Freezing Trap") != std::string::npos)
+                {
+                    if (!m_spells.hunter.pFreezingTrap ||
+                        m_spells.hunter.pFreezingTrap->Id < pSpellEntry->Id)
+                        m_spells.hunter.pFreezingTrap = pSpellEntry;
+                }
+                else if (pSpellEntry->SpellName[0].find("Immolation Trap") != std::string::npos)
+                {
+                    if (!m_spells.hunter.pImmolationTrap ||
+                        m_spells.hunter.pImmolationTrap->Id < pSpellEntry->Id)
+                        m_spells.hunter.pImmolationTrap = pSpellEntry;
+                }
+                else if (pSpellEntry->SpellName[0].find("Explosive Trap") != std::string::npos)
+                {
+                    if (!m_spells.hunter.pExplosiveTrap ||
+                        m_spells.hunter.pExplosiveTrap->Id < pSpellEntry->Id)
+                        m_spells.hunter.pExplosiveTrap = pSpellEntry;
+                }
+                else if (pSpellEntry->SpellName[0].find("Deterrence") != std::string::npos)
+                {
+                    if (!m_spells.hunter.pDeterrence ||
+                        m_spells.hunter.pDeterrence->Id < pSpellEntry->Id)
+                        m_spells.hunter.pDeterrence = pSpellEntry;
+                }
                 break;
             }
             case CLASS_MAGE:

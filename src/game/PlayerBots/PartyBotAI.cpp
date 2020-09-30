@@ -38,6 +38,9 @@ enum PartyBotSpells
     PB_SPELL_MOUNT_60_PALADIN = 23214,
     PB_SPELL_MOUNT_40_WARLOCK = 5784,
     PB_SPELL_MOUNT_60_WARLOCK = 23161,
+
+    PB_SPELL_SHIELD_SLAM = 23922,
+    PB_SPELL_HOLY_SHIELD = 20925,
 };
 
 #define PB_UPDATE_INTERVAL 1000
@@ -307,7 +310,7 @@ Unit* PartyBotAI::SelectAttackTarget(Player* pLeader) const
     // Who is the leader attacking.
     if (Unit* pVictim = pLeader->GetVictim())
     {
-        if (IsValidHostileTarget(pVictim))
+        if (pLeader->IsInCombat() && IsValidHostileTarget(pVictim))
             return pVictim;
     }
 
@@ -335,6 +338,24 @@ Unit* PartyBotAI::SelectPartyAttackTarget() const
             // We already checked self.
             if (pMember == me)
                 continue;
+
+            if (m_role == ROLE_TANK)
+            {
+                // Do not attack other tanks tagert
+                if (pMember->AI())
+                {
+                    if (PartyBotAI* pAI = dynamic_cast<PartyBotAI*>(pMember->AI()))
+                    {
+                        if (pAI->m_role == ROLE_TANK)
+                            continue;
+                    }
+                }
+                else if (pMember->HasSpell(PB_SPELL_SHIELD_SLAM) ||
+                    pMember->HasSpell(PB_SPELL_HOLY_SHIELD) ||
+                    pMember->GetShapeshiftForm() == FORM_BEAR ||
+                    pMember->GetShapeshiftForm() == FORM_DIREBEAR)
+                    continue;
+            }
 
             for (const auto pAttacker : pMember->GetAttackers())
             {
@@ -636,9 +657,6 @@ void PartyBotAI::UpdateAI(uint32 const diff)
 
     if (!me->IsInCombat())
     {
-        if (DrinkAndEat())
-            return;
-
         // Teleport to leader if too far away.
         if (!me->IsWithinDistInMap(pLeader, 100.0f) || me->GetDistanceZ(pLeader) > 20.0f)
         {
@@ -652,12 +670,14 @@ void PartyBotAI::UpdateAI(uint32 const diff)
             return;
         }
     }
-
-    if (me->GetStandState() != UNIT_STAND_STATE_STAND)
-        me->SetStandState(UNIT_STAND_STATE_STAND);
-
-    if (!me->IsInCombat() && !me->IsMounted())
+    else if (!me->IsInCombat() && !me->IsMounted())
     {
+        if (me->GetMotionMaster()->GetCurrentMovementGeneratorType() == IDLE_MOTION_TYPE)
+        {
+            if (DrinkAndEat())
+                return;
+        }
+
         UpdateOutOfCombatAI();
 
         if (m_isBuffing)
@@ -666,6 +686,9 @@ void PartyBotAI::UpdateAI(uint32 const diff)
         if (me->IsNonMeleeSpellCasted())
             return;
     }
+
+    if (me->GetStandState() != UNIT_STAND_STATE_STAND)
+        me->SetStandState(UNIT_STAND_STATE_STAND);
 
     Unit* pVictim = me->GetVictim();
 
@@ -1278,12 +1301,47 @@ void PartyBotAI::UpdateInCombatAI_Hunter()
             me->GetMotionMaster()->MoveChase(pVictim, 25.0f);
         }
 
-        if (m_spells.hunter.pFrosTrap &&
-            me->GetDistance(pVictim) <= 25.0f &&
-            CanTryToCastSpell(me, m_spells.hunter.pFrosTrap))
+        if (!me->GetCurrentSpell(CURRENT_AUTOREPEAT_SPELL))
         {
-            if (DoCastSpell(me, m_spells.hunter.pFrosTrap) == SPELL_CAST_OK)
-                return;
+            switch (urand(0, 3))
+            {
+            case 0:
+                if (m_spells.hunter.pFrosTrap &&
+                    me->GetDistance(pVictim) <= 25.0f &&
+                    CanTryToCastSpell(me, m_spells.hunter.pFrosTrap))
+                {
+                    if (DoCastSpell(me, m_spells.hunter.pFrosTrap) == SPELL_CAST_OK)
+                        return;
+                }
+                break;
+            case 1:
+                if (m_spells.hunter.pFreezingTrap &&
+                    me->GetDistance(pVictim) <= 25.0f &&
+                    CanTryToCastSpell(me, m_spells.hunter.pFreezingTrap))
+                {
+                    if (DoCastSpell(me, m_spells.hunter.pFreezingTrap) == SPELL_CAST_OK)
+                        return;
+                }
+                break;
+            case 2:
+                if (m_spells.hunter.pImmolationTrap &&
+                    me->GetDistance(pVictim) <= 25.0f &&
+                    CanTryToCastSpell(me, m_spells.hunter.pImmolationTrap))
+                {
+                    if (DoCastSpell(me, m_spells.hunter.pImmolationTrap) == SPELL_CAST_OK)
+                        return;
+                }
+                break;
+            case 3:
+                if (m_spells.hunter.pExplosiveTrap &&
+                    me->GetDistance(pVictim) <= 25.0f &&
+                    CanTryToCastSpell(me, m_spells.hunter.pExplosiveTrap))
+                {
+                    if (DoCastSpell(me, m_spells.hunter.pExplosiveTrap) == SPELL_CAST_OK)
+                        return;
+                }
+                break;
+            }
         }
 
         if (me->HasSpell(PB_SPELL_AUTO_SHOT) &&
@@ -1340,13 +1398,6 @@ void PartyBotAI::UpdateInCombatAI_Hunter()
         {
             Unit* pAttacker = *me->GetAttackers().begin();
 
-            if (m_spells.hunter.pScareBeast &&
-                CanTryToCastSpell(pAttacker, m_spells.hunter.pScareBeast))
-            {
-                if (DoCastSpell(pAttacker, m_spells.hunter.pScareBeast) == SPELL_CAST_OK)
-                    return;
-            }
-
             if (m_spells.hunter.pDisengage &&
                 CanTryToCastSpell(pAttacker, m_spells.hunter.pDisengage))
             {
@@ -1358,6 +1409,21 @@ void PartyBotAI::UpdateInCombatAI_Hunter()
                 CanTryToCastSpell(me, m_spells.hunter.pAspectOfTheMonkey))
             {
                 if (DoCastSpell(me, m_spells.hunter.pAspectOfTheMonkey) == SPELL_CAST_OK)
+                    return;
+            }
+
+            if (m_spells.hunter.pScareBeast &&
+                CanTryToCastSpell(pAttacker, m_spells.hunter.pScareBeast))
+            {
+                if (DoCastSpell(pAttacker, m_spells.hunter.pScareBeast) == SPELL_CAST_OK)
+                    return;
+            }
+
+            if (m_spells.hunter.pDeterrence &&
+                (me->GetHealthPercent() < 50.0f) &&
+                CanTryToCastSpell(me, m_spells.hunter.pDeterrence))
+            {
+                if (DoCastSpell(me, m_spells.hunter.pDeterrence) == SPELL_CAST_OK)
                     return;
             }
 
@@ -2249,7 +2315,7 @@ void PartyBotAI::UpdateInCombatAI_Warrior()
 
         if (m_spells.warrior.pDemoralizingShout &&
             m_role == ROLE_TANK &&
-            me->GetEnemyCountInRadiusAround(pVictim, 8.0f) > 2 &&
+            me->GetEnemyCountInRadiusAround(pVictim, 8.0f) > 1 &&
             CanTryToCastSpell(pVictim, m_spells.warrior.pDemoralizingShout))
         {
             if (DoCastSpell(pVictim, m_spells.warrior.pDemoralizingShout) == SPELL_CAST_OK)
@@ -2297,20 +2363,29 @@ void PartyBotAI::UpdateInCombatAI_Warrior()
                 return;
         }
 
-        if (m_spells.warrior.pThunderClap &&
-            me->GetEnemyCountInRadiusAround(pVictim, 8.0f) > 1 &&
-            CanTryToCastSpell(pVictim, m_spells.warrior.pThunderClap))
+        if (me->GetEnemyCountInRadiusAround(pVictim, 8.0f) > 1)
         {
-            if (DoCastSpell(pVictim, m_spells.warrior.pThunderClap) == SPELL_CAST_OK)
-                return;
-        }
+            if (m_spells.warrior.pThunderClap &&
+                CanTryToCastSpell(pVictim, m_spells.warrior.pThunderClap))
+            {
+                if (DoCastSpell(pVictim, m_spells.warrior.pThunderClap) == SPELL_CAST_OK)
+                    return;
+            }
 
-        if (m_spells.warrior.pDemoralizingShout &&
-            m_role == ROLE_TANK &&
-            CanTryToCastSpell(pVictim, m_spells.warrior.pDemoralizingShout))
-        {
-            if (DoCastSpell(pVictim, m_spells.warrior.pDemoralizingShout) == SPELL_CAST_OK)
-                return;
+            if (m_spells.warrior.pWhirlwind &&
+                CanTryToCastSpell(pVictim, m_spells.warrior.pWhirlwind))
+            {
+                if (DoCastSpell(pVictim, m_spells.warrior.pWhirlwind) == SPELL_CAST_OK)
+                    return;
+            }
+
+            if (m_spells.warrior.pCleave &&
+                m_role != ROLE_TANK &&
+                CanTryToCastSpell(pVictim, m_spells.warrior.pCleave))
+            {
+                if (DoCastSpell(pVictim, m_spells.warrior.pCleave) == SPELL_CAST_OK)
+                    return;
+            }
         }
 
         if (m_spells.warrior.pHamstring &&
@@ -2406,28 +2481,11 @@ void PartyBotAI::UpdateInCombatAI_Warrior()
             }
         }
 
-
         if (m_spells.warrior.pIntercept &&
             CanTryToCastSpell(pVictim, m_spells.warrior.pIntercept))
         {
             if (DoCastSpell(pVictim, m_spells.warrior.pIntercept) == SPELL_CAST_OK)
                 return;
-        }
-
-        if (me->GetEnemyCountInRadiusAround(pVictim, 8.0f) >= 2)
-        {
-            if (m_spells.warrior.pWhirlwind &&
-                CanTryToCastSpell(pVictim, m_spells.warrior.pWhirlwind))
-            {
-                if (DoCastSpell(pVictim, m_spells.warrior.pWhirlwind) == SPELL_CAST_OK)
-                    return;
-            }
-            if (m_spells.warrior.pCleave &&
-                CanTryToCastSpell(pVictim, m_spells.warrior.pCleave))
-            {
-                if (DoCastSpell(pVictim, m_spells.warrior.pCleave) == SPELL_CAST_OK)
-                    return;
-            }
         }
 
         if (m_spells.warrior.pHeroicStrike &&
@@ -2742,13 +2800,6 @@ void PartyBotAI::UpdateOutOfCombatAI_Druid()
         }
     }
 
-    if (m_spells.druid.pNaturesGrasp &&
-        CanTryToCastSpell(me, m_spells.druid.pNaturesGrasp))
-    {
-        if (DoCastSpell(me, m_spells.druid.pNaturesGrasp) == SPELL_CAST_OK)
-            return;
-    }
-
     if (m_isBuffing &&
        (!m_spells.druid.pMarkoftheWild ||
         !me->GetGlobalCooldownMgr().HasGlobalCooldown(m_spells.druid.pMarkoftheWild)))
@@ -3056,6 +3107,13 @@ void PartyBotAI::UpdateInCombatAI_Druid()
                 me->SetCasterChaseDistance(25.0f);
                 RunAwayFromTarget(pVictim);
                 return;
+            }
+
+            if (m_spells.druid.pNaturesGrasp &&
+                CanTryToCastSpell(me, m_spells.druid.pNaturesGrasp))
+            {
+                if (DoCastSpell(me, m_spells.druid.pNaturesGrasp) == SPELL_CAST_OK)
+                    return;
             }
 
             if (m_spells.druid.pFaerieFire &&
