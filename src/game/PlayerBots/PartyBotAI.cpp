@@ -670,13 +670,11 @@ void PartyBotAI::UpdateAI(uint32 const diff)
             return;
         }
     }
-    else if (!me->IsInCombat() && !me->IsMounted())
+
+    if (!me->IsInCombat() && !me->IsMounted())
     {
-        if (me->GetMotionMaster()->GetCurrentMovementGeneratorType() == IDLE_MOTION_TYPE)
-        {
-            if (DrinkAndEat())
-                return;
-        }
+        if (DrinkAndEat())
+            return;
 
         UpdateOutOfCombatAI();
 
@@ -2357,7 +2355,7 @@ void PartyBotAI::UpdateInCombatAI_Warrior()
 
         if (m_spells.warrior.pSunderArmor &&
             m_role == ROLE_TANK &&
-            CanTryToCastSpell(pVictim, m_spells.warrior.pSunderArmor))
+            CanTryToCastSpell(pVictim, m_spells.warrior.pSunderArmor, 2))
         {
             if (DoCastSpell(pVictim, m_spells.warrior.pSunderArmor) == SPELL_CAST_OK)
                 return;
