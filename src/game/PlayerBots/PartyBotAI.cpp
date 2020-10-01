@@ -362,7 +362,11 @@ bool PartyBotAI::DrinkAndEat()
             me->StopMoving();
             me->GetMotionMaster()->MoveIdle();
         }
-        me->CastSpell(me, PB_SPELL_FOOD, true);
+        if (SpellEntry const* pSpellEntry = sSpellMgr.GetSpellEntry(PB_SPELL_FOOD))
+        {
+            me->CastSpell(me, pSpellEntry, true);
+            me->RemoveSpellCooldown(*pSpellEntry);
+        }
         return true;
     }
 
