@@ -538,7 +538,7 @@ void npc_shade_hakkarAI::UpdateAI(uint32 const uiDiff)
         if (FirstPop)
             FirstPop = false;
 
-        m_uiHakkariTimer = urand(5000, 15000);
+        m_uiHakkariTimer = urand(10000, 20000);
     }
     else
         m_uiHakkariTimer -= uiDiff;

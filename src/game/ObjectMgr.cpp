@@ -11169,9 +11169,36 @@ void ObjectMgr::ApplyPremadeGearTemplateToPlayer(uint32 entry, Player* pPlayer) 
 
     if (Item* pItem = pPlayer->GetItemByPos(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_RANGED))
     {
+        uint32 ammoId;
         if (pItem->GetProto()->SubClass == ITEM_SUBCLASS_WEAPON_BOW ||
-            pItem->GetProto()->SubClass == ITEM_SUBCLASS_WEAPON_CROSSBOW )
-        pPlayer->StoreNewItemInBestSlots(2512, 1000);
+            pItem->GetProto()->SubClass == ITEM_SUBCLASS_WEAPON_CROSSBOW)
+        {
+            if (pPlayer->GetLevel() >= 52)
+                ammoId = 18042;
+            else if (pPlayer->GetLevel() >= 40)
+                ammoId = 11285;
+            else if (pPlayer->GetLevel() >= 30)
+                ammoId = 3031;
+            else if (pPlayer->GetLevel() >= 15)
+                ammoId = 3029;
+            else
+                ammoId = 2512;
+        }
+        else if (pItem->GetProto()->SubClass == ITEM_SUBCLASS_WEAPON_GUN)
+        {
+            if (pPlayer->GetLevel() >= 52)
+                ammoId = 15997;
+            else if (pPlayer->GetLevel() >= 40)
+                ammoId = 11284;
+            else if (pPlayer->GetLevel() >= 30)
+                ammoId = 8069;
+            else if (pPlayer->GetLevel() >= 15)
+                ammoId = 8068;
+            else
+                ammoId = 2516;
+        }
+        pPlayer->StoreNewItemInBestSlots(ammoId, 1200);
+        pPlayer->SetAmmo(ammoId);
     }
 
 }

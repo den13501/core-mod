@@ -119,8 +119,8 @@ enum ShadeOfHakkar
     SHADE_SPAWN_TYPES   = 2,                             // The number of different event spawn types for the Shade of Hakkar
     SHADE_HAKKARI_TYPE  = 0,
     SHADE_KEEPER_TYPE   = 1,
-    MAX_HAKKARI_MINION  = 17,                            // Maximum number of Hakkari minions that can be alive at once 8 + 3 + 3 + 3 = 17 (4 waves w/ max spawn each time)
-    MAX_BLOODKEEPER     = 4,                             // Maximum number of blood keepers that can be alive at once
+    MAX_HAKKARI_MINION  = 6,                            // Maximum number of Hakkari minions that can be alive at once 8 + 3 + 3 + 3 = 17 (4 waves w/ max spawn each time)
+    MAX_BLOODKEEPER     = 2,                             // Maximum number of blood keepers that can be alive at once
     NUM_BRAZIERS        = 4,
 };
 

@@ -607,11 +607,9 @@ uint8 SelectRandomRaceForClass(uint8 playerClass, Team playerTeam)
         case CLASS_HUNTER:
         {
             if (playerTeam == ALLIANCE)
-                //return urand(0, 1) ? RACE_DWARF : RACE_NIGHTELF;
-                return RACE_NIGHTELF;
+                return urand(0, 1) ? RACE_DWARF : RACE_NIGHTELF;
             else
-                //return PickRandomValue(RACE_ORC, RACE_TAUREN, RACE_TROLL);
-                return urand(0, 1) ? RACE_ORC : RACE_TROLL;
+                return PickRandomValue(RACE_ORC, RACE_TAUREN, RACE_TROLL);
             break;
         }
         case CLASS_ROGUE:
