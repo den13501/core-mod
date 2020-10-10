@@ -334,6 +334,8 @@ Unit* PartyBotAI::SelectAttackTarget(Player* pLeader) const
 
 Unit* PartyBotAI::SelectPartyAttackTarget() const
 {
+    // Random retries so not everyone selects the same target
+    int retries = urand(1, 3);
     Group* pGroup = me->GetGroup();
     
     for (GroupReference* itr = pGroup->GetFirstMember(); itr != nullptr; itr = itr->next())
@@ -366,7 +368,10 @@ Unit* PartyBotAI::SelectPartyAttackTarget() const
             {
                 if (IsValidHostileTarget(pAttacker) &&
                     me->IsWithinDist(pAttacker, 50.0f))
-                    return pAttacker;
+                {
+                    if (--retries <= 0)
+                        return pAttacker;
+                }
             }
         }
     }
@@ -612,10 +617,19 @@ void PartyBotAI::UpdateAI(uint32 const diff)
         return;
     }
 
+
+    if (me->HasAuraType(SPELL_AURA_FEIGN_DEATH))
+    {
+        if (me->GetEnemyCountInRadiusAround(me, 15.0f) > 0)
+            return;
+        else
+            me->RemoveSpellsCausingAura(SPELL_AURA_FEIGN_DEATH);
+    }
+
     if (me->HasUnitState(UNIT_STAT_CAN_NOT_REACT_OR_LOST_CONTROL))
         return;
 
-    if (me->IsDead() && !me->HasAuraType(SPELL_AURA_FEIGN_DEATH))
+    if (me->IsDead())
     {
         if (me->InBattleGround())
         {
@@ -671,9 +685,6 @@ void PartyBotAI::UpdateAI(uint32 const diff)
             ChatHandler(me).HandleGonameCommand(name);
             return;
         }
-        
-        if (me->HasAuraType(SPELL_AURA_FEIGN_DEATH))
-            me->RemoveSpellsCausingAura(SPELL_AURA_FEIGN_DEATH);
 
         if (!me->IsMounted())
         {
@@ -1289,12 +1300,6 @@ void PartyBotAI::UpdateOutOfCombatAI_Hunter()
 
 void PartyBotAI::UpdateInCombatAI_Hunter()
 {
-    if (me->HasUnitState(UNIT_STAT_DIED) &&
-        m_spells.hunter.pFeignDeath &&
-        me->GetAttackers().empty() &&
-        me->HasAura(m_spells.hunter.pFeignDeath->Id))
-        me->RemoveSpellsCausingAura(SPELL_AURA_FEIGN_DEATH);
-
     if (Unit* pVictim = me->GetVictim())
     {
         if (me->GetMotionMaster()->GetCurrentMovementGeneratorType() == IDLE_MOTION_TYPE
@@ -2766,6 +2771,8 @@ void PartyBotAI::UpdateOutOfCombatAI_Druid()
         {
             if (CanTryToCastSpell(pTarget, m_spells.druid.pGiftoftheWild))
             {
+                if (me->GetShapeshiftForm() != FORM_NONE)
+                    me->RemoveSpellsCausingAura(SPELL_AURA_MOD_SHAPESHIFT);
                 if (DoCastSpell(pTarget, m_spells.druid.pGiftoftheWild) == SPELL_CAST_OK)
                 {
                     m_isBuffing = true;
@@ -2780,6 +2787,8 @@ void PartyBotAI::UpdateOutOfCombatAI_Druid()
         {
             if (CanTryToCastSpell(pTarget, m_spells.druid.pMarkoftheWild))
             {
+                if (me->GetShapeshiftForm() != FORM_NONE)
+                    me->RemoveSpellsCausingAura(SPELL_AURA_MOD_SHAPESHIFT);
                 if (DoCastSpell(pTarget, m_spells.druid.pMarkoftheWild) == SPELL_CAST_OK)
                 {
                     m_isBuffing = true;
@@ -2795,6 +2804,8 @@ void PartyBotAI::UpdateOutOfCombatAI_Druid()
         {
             if (CanTryToCastSpell(pTarget, m_spells.druid.pThorns))
             {
+                if (me->GetShapeshiftForm() != FORM_NONE)
+                    me->RemoveSpellsCausingAura(SPELL_AURA_MOD_SHAPESHIFT);
                 if (DoCastSpell(pTarget, m_spells.druid.pThorns) == SPELL_CAST_OK)
                 {
                     m_isBuffing = true;

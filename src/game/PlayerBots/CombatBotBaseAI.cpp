@@ -2200,8 +2200,10 @@ Unit* CombatBotBaseAI::SelectHealTarget(float selfHealPercent, float groupHealPe
     if (me->GetHealthPercent() < selfHealPercent)
         return me;
 
+    std::vector<Unit*> vPlayerTargets;
+    std::vector<Unit*> vPetTargets;
+
     Unit* pTarget = nullptr;
-    float healthPercent = 100.0f;
 
     if (Group* pGroup = me->GetGroup())
     {
@@ -2213,26 +2215,20 @@ Unit* CombatBotBaseAI::SelectHealTarget(float selfHealPercent, float groupHealPe
                 if (pMember == me)
                     continue;
 
-                // Avoid all healers picking same target.
-                if (pTarget && !urand(0, 4))
-                    return pTarget;
-
                 // Check if we should heal party member.
-                if ((IsValidHealTarget(pMember, groupHealPercent) &&
-                    healthPercent > pMember->GetHealthPercent()) ||
-                    // Or a pet if there are no injured players.
-                    (!pTarget && (pMember = pMember->GetPet()) &&
-                        IsValidHealTarget(pMember, groupHealPercent)))
-                {
-                    healthPercent = pMember->GetHealthPercent();
-                    pTarget = pMember;
-                }
+                if (IsValidHealTarget(pMember, groupHealPercent))
+                    vPlayerTargets.push_back(pMember);
+                // Also check pets.
+                if ((pMember = pMember->GetPet()) && IsValidHealTarget(pMember, groupHealPercent))
+                    vPetTargets.push_back(pMember);
             }
         }
     }
 
-    if (healthPercent == 100.0f)
-        return nullptr;
+    if (!vPlayerTargets.empty())
+        pTarget = SelectRandomContainerElement(vPlayerTargets);
+    else if(!vPetTargets.empty())
+        pTarget = SelectRandomContainerElement(vPetTargets);
 
     return pTarget;
 }
@@ -2242,6 +2238,10 @@ Unit* CombatBotBaseAI::SelectPeriodicHealTarget(float selfHealPercent, float gro
     if (me->GetHealthPercent() < selfHealPercent &&
        !me->HasAuraType(SPELL_AURA_PERIODIC_HEAL))
         return me;
+
+    std::vector<Unit*> vPlayerTargets;
+
+    Unit* pTarget = nullptr;
 
     if (Group* pGroup = me->GetGroup())
     {
@@ -2255,13 +2255,16 @@ Unit* CombatBotBaseAI::SelectPeriodicHealTarget(float selfHealPercent, float gro
 
                 // Check if we should heal party member.
                 if (IsValidHealTarget(pMember, groupHealPercent) &&
-                   !pMember->HasAuraType(SPELL_AURA_PERIODIC_HEAL))
-                    return pMember;
+                    !pMember->HasAuraType(SPELL_AURA_PERIODIC_HEAL))
+                    vPlayerTargets.push_back(pMember);
             }
         }
     }
 
-    return nullptr;
+    if (!vPlayerTargets.empty())
+        pTarget = SelectRandomContainerElement(vPlayerTargets);
+
+    return pTarget;
 }
 
 bool CombatBotBaseAI::IsValidHostileTarget(Unit const* pTarget) const
