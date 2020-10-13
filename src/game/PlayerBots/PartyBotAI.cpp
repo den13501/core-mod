@@ -97,76 +97,87 @@ void PartyBotAI::CloneFromPlayer(Player const* pPlayer)
 
 void PartyBotAI::LearnPremadeSpecForClass()
 {
-    uint8 level = m_level;
-    uint32 spec = 0;
-
+    
     me->GiveLevel(m_level);
     me->InitTalentForLevel();
     me->SetUInt32Value(PLAYER_XP, 0);
+    
+    uint8 level = m_level;
 
-    while (spec == 0 && level >= (m_level - 4))
+    std::vector<PlayerPremadeSpecTemplate> vSpecs;
+    std::vector<PlayerPremadeSpecTemplate> vSpecsAux;
+    std::vector<PlayerPremadeGearTemplate> vGears;
+    std::vector<PlayerPremadeGearTemplate> vGearsAux;
+    std::vector<PlayerPremadeGearTemplate> vGearsAux2;
+
+    PlayerPremadeSpecTemplate spec;
+    PlayerPremadeGearTemplate gear;
+
+    // Try to find spec to player - Maximun 3 level diference
+    while (vSpecs.empty() && level >= (m_level - 3))
     {
-        // First attempt to find gear. Must be for correct class, level and role.
         for (const auto& itr : sObjectMgr.GetPlayerPremadeSpecTemplates())
         {
             if (itr.second.requiredClass == me->GetClass() &&
-                itr.second.role == m_role &&
                 itr.second.level == level)
             {
-                spec = itr.first;
-                break;
+                if (itr.second.role == m_role)
+                    vSpecs.push_back(itr.second);
+                else if(vSpecs.empty())
+                    vSpecsAux.push_back(itr.second);
             }
         }
-
-        if (spec == 0)
-        {
-            // Second attempt, but this time we will accept any role, just so
-            // that we have level appropriate spells.
-            for (const auto& itr : sObjectMgr.GetPlayerPremadeSpecTemplates())
-            {
-                if (itr.second.requiredClass == me->GetClass() &&
-                    itr.second.level == level)
-                {
-                    spec = itr.first;
-                    break;
-                }
-            }
-        }
+        if (vSpecs.empty() && !vSpecsAux.empty())
+            vSpecs = vSpecsAux;
         level--;
     }
     
-    if (spec != 0)
+    if (!vSpecs.empty())
     {
-        sObjectMgr.ApplyPremadeSpecTemplateToPlayer(spec, me);
+        // Select random spec template
+        spec = SelectRandomContainerElement(vSpecs);
+        // Apply selected spec template
+        sObjectMgr.ApplyPremadeSpecTemplateToPlayer(spec.entry, me);
 
+        // Now try to find gear for selected spec
         level = m_level;
-        while (level >= (m_level - 4))
+        while (vGears.empty() && level >= (m_level - 3))
         {
-            // First attempt to find gear. Must be for correct class, level and role.
             for (const auto& itr : sObjectMgr.GetPlayerPremadeGearTemplates())
             {
-                if (itr.second.requiredClass == me->GetClass() &&
-                    itr.second.role == m_role &&
+                if (itr.second.requiredClass == spec.requiredClass &&
                     itr.second.level == level)
                 {
-                    sObjectMgr.ApplyPremadeGearTemplateToPlayer(itr.first, me);
-                    return;
-                }
-            }
-            // Second attempt, but this time we will accept any role, just so
-            // that we have level appropriate gear.
-            for (const auto& itr : sObjectMgr.GetPlayerPremadeGearTemplates())
-            {
-                if (itr.second.requiredClass == me->GetClass() &&
-                    itr.second.level == level)
-                {
-                    sObjectMgr.ApplyPremadeGearTemplateToPlayer(itr.first, me);
-                    return;
+                    if (itr.second.name == spec.name)
+                        vGears.push_back(itr.second);
+                    else if (vGears.empty())
+                    {
+                        if (itr.second.role == spec.role)
+                            vGearsAux.push_back(itr.second);
+                        else if (vGearsAux.empty())
+                            vGearsAux2.push_back(itr.second);
+                    }
                 }
             }
             level--;
         }
-        return;
+
+        if (vGears.empty())
+        {
+            if (!vGearsAux.empty())
+                vGears = vGearsAux;
+            else if (!vGearsAux2.empty())
+                vGears = vGearsAux2;
+        }
+
+        if(!vGears.empty())
+        { 
+            // Select random gear template
+            gear = SelectRandomContainerElement(vGears);
+            // Apply selected gear template
+            sObjectMgr.ApplyPremadeGearTemplateToPlayer(gear.entry, me);
+            return;
+        }
     }
     
     me->MonsterSay("No spec template for this level found!");
@@ -1029,11 +1040,15 @@ void PartyBotAI::UpdateInCombatAI_Paladin()
 
         bool const hasSeal = m_spells.paladin.pSeal && me->HasAura(m_spells.paladin.pSeal->Id);
 
-        if (!hasSeal &&
-            m_spells.paladin.pSeal &&
-            CanTryToCastSpell(me, m_spells.paladin.pSeal))
+        if (!hasSeal)
         {
-            me->CastSpell(me, m_spells.paladin.pSeal, false);
+            if (me->GetPowerPercent(POWER_MANA) < 15.0f &&
+                m_spells.paladin.pSealOfWisdom &&
+                CanTryToCastSpell(me, m_spells.paladin.pSealOfWisdom))
+                me->CastSpell(me, m_spells.paladin.pSealOfWisdom, false);
+            else if (m_spells.paladin.pSeal &&
+                     CanTryToCastSpell(me, m_spells.paladin.pSeal))
+                me->CastSpell(me, m_spells.paladin.pSeal, false);
         }
 
         if (m_role == ROLE_TANK && me->GetHealthPercent() < 35.0f)
@@ -2314,6 +2329,13 @@ void PartyBotAI::UpdateInCombatAI_Warrior()
                 return;
         }
 
+        if (m_spells.warrior.pBerserkerRage &&
+            CanTryToCastSpell(me, m_spells.warrior.pBerserkerRage))
+        {
+            if (DoCastSpell(me, m_spells.warrior.pBerserkerRage) == SPELL_CAST_OK)
+                return;
+        }
+
         if (m_spells.warrior.pLastStand &&
             me->GetHealthPercent() < 20.0f &&
             CanTryToCastSpell(me, m_spells.warrior.pLastStand))
@@ -2407,8 +2429,7 @@ void PartyBotAI::UpdateInCombatAI_Warrior()
                 return;
         }
 
-        if (me->GetShapeshiftForm() == FORM_DEFENSIVESTANCE &&
-            IsWearingShield())
+        if (me->GetShapeshiftForm() == FORM_DEFENSIVESTANCE && IsWearingShield())
         {
             if (!me->GetAttackers().empty())
             {
@@ -2494,6 +2515,14 @@ void PartyBotAI::UpdateInCombatAI_Warrior()
             CanTryToCastSpell(pVictim, m_spells.warrior.pIntercept))
         {
             if (DoCastSpell(pVictim, m_spells.warrior.pIntercept) == SPELL_CAST_OK)
+                return;
+        }
+
+        if (me->GetShapeshiftForm() == FORM_BERSERKERSTANCE &&
+            m_spells.warrior.pSlam &&
+            CanTryToCastSpell(pVictim, m_spells.warrior.pSlam))
+        {
+            if (DoCastSpell(pVictim, m_spells.warrior.pSlam) == SPELL_CAST_OK)
                 return;
         }
 

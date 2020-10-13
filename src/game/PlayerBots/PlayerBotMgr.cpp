@@ -747,6 +747,7 @@ bool ChatHandler::HandlePartyBotAddCommand(char* args)
     if (!pPlayer)
         return false;
 
+    // Only allow to add member when resting
     /*if (!pPlayer->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_RESTING))
         return false;*/
 
@@ -796,7 +797,10 @@ bool ChatHandler::HandlePartyBotAddCommand(char* args)
             else
                 dpsClasses.push_back(CLASS_PALADIN);
             botClass = SelectRandomContainerElement(dpsClasses);
-            botRole = CombatBotBaseAI::IsMeleeWeaponClass(botClass) ? ROLE_MELEE_DPS : ROLE_RANGE_DPS;
+            if (botClass == CLASS_DRUID)
+                botRole == urand(0, 1) ? ROLE_MELEE_DPS : ROLE_RANGE_DPS;
+            else
+                botRole = CombatBotBaseAI::IsMeleeWeaponClass(botClass) ? ROLE_MELEE_DPS : ROLE_RANGE_DPS;
         }
         else if (option == "healer")
         {

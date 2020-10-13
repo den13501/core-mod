@@ -227,6 +227,7 @@ public:
         {
             SpellEntry const* pAura;
             SpellEntry const* pSeal;
+            SpellEntry const* pSealOfWisdom;
             SpellEntry const* pBlessingBuff;
             SpellEntry const* pBlessingOfProtection;
             SpellEntry const* pBlessingOfFreedom;
@@ -245,6 +246,7 @@ public:
             SpellEntry const* pHolyWrath;
             SpellEntry const* pTurnEvil;
             SpellEntry const* pHolyShield;
+            SpellEntry const* pRepentance;
         } paladin;
         struct
         {
@@ -408,6 +410,7 @@ public:
             SpellEntry const* pConcussionBlow;
             SpellEntry const* pPiercingHowl;
             SpellEntry const* pRevenge;
+            SpellEntry const* pSlam;
         } warrior;
         struct
         {
