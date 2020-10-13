@@ -2377,7 +2377,8 @@ void PartyBotAI::UpdateInCombatAI_Warrior()
         }
         else if (me->GetHealthPercent() > 60.0f)
         {
-            if (IsDualWielding() && m_spells.warrior.pBerserkerStance &&
+            if (m_spells.warrior.pBloodthirst &&
+                m_spells.warrior.pBerserkerStance &&
                 CanTryToCastSpell(me, m_spells.warrior.pBerserkerStance))
             {
                 DoCastSpell(me, m_spells.warrior.pBerserkerStance);
@@ -2600,20 +2601,21 @@ void PartyBotAI::UpdateInCombatAI_Warrior()
                 return;
         }
 
-        if (me->GetShapeshiftForm() == FORM_BERSERKERSTANCE &&
-            m_spells.warrior.pSlam &&
-            CanTryToCastSpell(pVictim, m_spells.warrior.pSlam))
-        {
-            if (DoCastSpell(pVictim, m_spells.warrior.pSlam) == SPELL_CAST_OK)
-                return;
-        }
-
         if (m_spells.warrior.pHeroicStrike &&
             CanTryToCastSpell(pVictim, m_spells.warrior.pHeroicStrike))
         {
             if (DoCastSpell(pVictim, m_spells.warrior.pHeroicStrike) == SPELL_CAST_OK)
                 return;
         }
+
+        // Slam only good for two handed weapon and improved Slam Talent
+        /*if (me->GetShapeshiftForm() == FORM_BERSERKERSTANCE &&
+            m_spells.warrior.pSlam &&
+            CanTryToCastSpell(pVictim, m_spells.warrior.pSlam))
+        {
+            if (DoCastSpell(pVictim, m_spells.warrior.pSlam) == SPELL_CAST_OK)
+                return;
+        }*/
 
     }
     else // no victim
