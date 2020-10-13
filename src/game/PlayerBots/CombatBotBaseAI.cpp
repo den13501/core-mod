@@ -767,6 +767,25 @@ void CombatBotBaseAI::PopulateSpellData()
                         m_spells.hunter.pDeterrence->Id < pSpellEntry->Id)
                         m_spells.hunter.pDeterrence = pSpellEntry;
                 }
+                else if (pSpellEntry->SpellName[0].find("Counterattack") != std::string::npos)
+                {
+                    if (!m_spells.hunter.pCounterattack ||
+                        m_spells.hunter.pCounterattack->Id < pSpellEntry->Id)
+                        m_spells.hunter.pCounterattack = pSpellEntry;
+                }
+                else if (pSpellEntry->SpellName[0].find("Intimidation") != std::string::npos)
+                {
+                    if (!m_spells.hunter.pIntimidation ||
+                        m_spells.hunter.pIntimidation->Id < pSpellEntry->Id)
+                        m_spells.hunter.pIntimidation = pSpellEntry;
+                }
+                else if (pSpellEntry->SpellName[0].find("Bestial Wrath") != std::string::npos)
+                {
+                    if (!m_spells.hunter.pBestialWrath ||
+                        m_spells.hunter.pBestialWrath->Id < pSpellEntry->Id)
+                        m_spells.hunter.pBestialWrath = pSpellEntry;
+                }
+
                 break;
             }
             case CLASS_MAGE:
@@ -933,6 +952,24 @@ void CombatBotBaseAI::PopulateSpellData()
                         m_spells.mage.pBlastWave->Id < pSpellEntry->Id)
                         m_spells.mage.pBlastWave = pSpellEntry;
                 }
+                else if (pSpellEntry->SpellName[0].find("Combustion") != std::string::npos)
+                {
+                    if (!m_spells.mage.pCombustion ||
+                        m_spells.mage.pCombustion->Id < pSpellEntry->Id)
+                        m_spells.mage.pCombustion = pSpellEntry;
+                }
+                else if (pSpellEntry->SpellName[0].find("Flamestrike") != std::string::npos)
+                {
+                    if (!m_spells.mage.pFlamestrike ||
+                        m_spells.mage.pFlamestrike->Id < pSpellEntry->Id)
+                        m_spells.mage.pFlamestrike = pSpellEntry;
+                }
+                else if (pSpellEntry->SpellName[0].find("Arcane Missiles") != std::string::npos)
+                {
+                if (!m_spells.mage.pArcaneMissiles ||
+                    m_spells.mage.pArcaneMissiles->Id < pSpellEntry->Id)
+                    m_spells.mage.pArcaneMissiles = pSpellEntry;
+                }
                 break;
             }
             case CLASS_PRIEST:
@@ -1074,6 +1111,12 @@ void CombatBotBaseAI::PopulateSpellData()
                     if (!m_spells.priest.pShackleUndead ||
                         m_spells.priest.pShackleUndead->Id < pSpellEntry->Id)
                         m_spells.priest.pShackleUndead = pSpellEntry;
+                }
+                else if (pSpellEntry->SpellName[0].find("Touch of Weakness") != std::string::npos)
+                {
+                if (!m_spells.priest.pTouchOfWeakness ||
+                    m_spells.priest.pTouchOfWeakness->Id < pSpellEntry->Id)
+                    m_spells.priest.pTouchOfWeakness = pSpellEntry;
                 }
                 break;
             }

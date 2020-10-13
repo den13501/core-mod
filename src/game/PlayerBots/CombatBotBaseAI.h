@@ -292,6 +292,9 @@ public:
             SpellEntry const* pExplosiveTrap;
             SpellEntry const* pImmolationTrap;
             SpellEntry const* pDeterrence;
+            SpellEntry const* pCounterattack;
+            SpellEntry const* pIntimidation;
+            SpellEntry const* pBestialWrath;
         } hunter;
         struct
         {
@@ -318,6 +321,9 @@ public:
             SpellEntry const* pIceBlock;
             SpellEntry const* pBlizzard;
             SpellEntry const* pBlastWave;
+            SpellEntry const* pCombustion;
+            SpellEntry const* pFlamestrike;
+            SpellEntry const* pArcaneMissiles;
         } mage;
         struct
         {
@@ -344,6 +350,7 @@ public:
             SpellEntry const* pSilence;
             SpellEntry const* pFade;
             SpellEntry const* pShackleUndead;
+            SpellEntry const* pTouchOfWeakness;
         } priest;
         struct
         {
