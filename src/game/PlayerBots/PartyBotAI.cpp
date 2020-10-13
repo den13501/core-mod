@@ -2916,6 +2916,20 @@ void PartyBotAI::UpdateOutOfCombatAI_Druid()
         }
     }
 
+    if (m_spells.druid.pOmenOfClarity)
+    {
+        if (CanTryToCastSpell(me, m_spells.druid.pOmenOfClarity))
+        {
+            if (me->GetShapeshiftForm() != FORM_NONE)
+                me->RemoveSpellsCausingAura(SPELL_AURA_MOD_SHAPESHIFT);
+            if (DoCastSpell(me, m_spells.druid.pOmenOfClarity) == SPELL_CAST_OK)
+            {
+                m_isBuffing = true;
+                return;
+            }
+        }
+    }
+
     if (m_spells.druid.pThorns)
     {
         if (Player* pTarget = SelectBuffTarget(m_spells.druid.pThorns))
@@ -2985,8 +2999,18 @@ void PartyBotAI::UpdateInCombatAI_Druid()
 
         // Direct heal.
         if (Unit* pTarget = SelectHealTarget(70.0f, 70.0f))
+        {
+            if (m_spells.druid.pSwiftmend &&
+                pTarget->HasAuraType(SPELL_AURA_PERIODIC_HEAL) &&
+                CanTryToCastSpell(pTarget, m_spells.druid.pSwiftmend))
+            {
+                if (DoCastSpell(pTarget, m_spells.druid.pSwiftmend) == SPELL_CAST_OK)
+                    return;
+            }
+
             if (HealInjuredTargetDirect(pTarget))
                 return;
+        }
     }
     else
     {

@@ -1922,6 +1922,18 @@ void CombatBotBaseAI::PopulateSpellData()
                         m_spells.druid.pProwl->Id < pSpellEntry->Id)
                         m_spells.druid.pProwl = pSpellEntry;
                 }
+                else if (pSpellEntry->SpellName[0].find("Swiftmend") != std::string::npos)
+                {
+                    if (!m_spells.druid.pSwiftmend ||
+                        m_spells.druid.pSwiftmend->Id < pSpellEntry->Id)
+                        m_spells.druid.pSwiftmend = pSpellEntry;
+                }
+                else if (pSpellEntry->SpellName[0].find("Omen of Clarity") != std::string::npos)
+                {
+                    if (!m_spells.druid.pOmenOfClarity ||
+                        m_spells.druid.pOmenOfClarity->Id < pSpellEntry->Id)
+                        m_spells.druid.pOmenOfClarity = pSpellEntry;
+                }
                 break;
             }
         }
@@ -2520,6 +2532,13 @@ void CombatBotBaseAI::SummonPetIfNeeded()
     {
         if (me->GetPetGuid())
             return;
+
+        if (m_spells.warlock.pDemonicSacrifice)
+        {
+            if(!me->HasAura(m_spells.warlock.pDemonicSacrifice->Id))
+                me->CastSpell(me, SPELL_SUMMON_SUCCUBUS, true);
+            return;
+        }
 
         std::vector<uint32> vSummons;
         if (me->HasSpell(SPELL_SUMMON_IMP))
