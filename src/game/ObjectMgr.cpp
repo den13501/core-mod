@@ -11183,6 +11183,8 @@ void ObjectMgr::ApplyPremadeGearTemplateToPlayer(uint32 entry, Player* pPlayer) 
                 ammoId = 3029;
             else
                 ammoId = 2512;
+            pPlayer->StoreNewItemInBestSlots(ammoId, 1200);
+            pPlayer->SetAmmo(ammoId);
         }
         else if (pItem->GetProto()->SubClass == ITEM_SUBCLASS_WEAPON_GUN)
         {
@@ -11196,9 +11198,9 @@ void ObjectMgr::ApplyPremadeGearTemplateToPlayer(uint32 entry, Player* pPlayer) 
                 ammoId = 8068;
             else
                 ammoId = 2516;
+            pPlayer->StoreNewItemInBestSlots(ammoId, 1200);
+            pPlayer->SetAmmo(ammoId);
         }
-        pPlayer->StoreNewItemInBestSlots(ammoId, 1200);
-        pPlayer->SetAmmo(ammoId);
     }
 
 }

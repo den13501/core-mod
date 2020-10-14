@@ -221,7 +221,7 @@ public:
     {
         struct
         {
-            SpellEntry const* spells[44];
+            SpellEntry const* spells[50];
         } raw;
         struct
         {
