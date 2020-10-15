@@ -1074,6 +1074,29 @@ bool Pet::CanLearnPetSpell(uint32 spellId) const
     return false;
 }
 
+bool Pet::LearnAllPetSpells()
+{
+    uint32 skillId = GetSkillIdForPetTraining();
+    SkillLineAbilityMapBounds bounds = sSpellMgr.GetSkillLineAbilityMapBoundsBySkillId(skillId);
+    for (SkillLineAbilityMap::const_iterator _spell_idx = bounds.first; _spell_idx != bounds.second; ++_spell_idx)
+    {
+        SpellEntry const* spellInfo = sSpellMgr.GetSpellEntry(_spell_idx->second->spellId);
+        
+        if (!spellInfo)
+            continue;
+        
+        if (spellInfo->baseLevel <= GetLevel())
+        {
+            if (LearnSpell(spellInfo->Id))
+                ToggleAutocast(spellInfo->Id, true);
+        }
+    }
+
+    m_allSpellsLearned = true;
+
+    return true;
+}
+
 void Pet::Unsummon(PetSaveMode mode, Unit* owner /*= nullptr*/)
 {
     if (m_removed || m_unSummoned)

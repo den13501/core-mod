@@ -2375,6 +2375,13 @@ bool ChatHandler::HandleHonorSetRPCommand(char *args)
 
 bool ChatHandler::HandleLearnAllCommand(char* /*args*/)
 {
+    Pet* pPet = GetSelectedPet();
+    if (pPet)
+    {
+        pPet->LearnAllPetSpells();
+        SendSysMessage(LANG_COMMAND_LEARN_MANY_SPELLS);
+        return true;
+    }
     Player* pPlayer = GetSelectedPlayer();
     if (!pPlayer)
     {

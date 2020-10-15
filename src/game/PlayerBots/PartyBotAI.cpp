@@ -2379,11 +2379,14 @@ void PartyBotAI::UpdateInCombatAI_Warrior()
         {
             if (m_spells.warrior.pBloodthirst &&
                 m_spells.warrior.pBerserkerStance &&
+                me->GetShapeshiftForm() != FORM_BERSERKERSTANCE &&
                 CanTryToCastSpell(me, m_spells.warrior.pBerserkerStance))
             {
                 DoCastSpell(me, m_spells.warrior.pBerserkerStance);
             }
-            else if (m_spells.warrior.pBattleStance &&
+            else if (m_spells.warrior.pMortalStrike &&
+                m_spells.warrior.pBattleStance &&
+                me->GetShapeshiftForm() != FORM_BATTLESTANCE &&
                 CanTryToCastSpell(me, m_spells.warrior.pBattleStance))
             {
                 DoCastSpell(me, m_spells.warrior.pBattleStance);
@@ -3003,6 +3006,7 @@ void PartyBotAI::UpdateInCombatAI_Druid()
         if (Unit* pTarget = SelectHealTarget(70.0f, 70.0f))
         {
             if (m_spells.druid.pSwiftmend &&
+                pTarget->GetHealthPercent() < 50.0f &&
                 pTarget->HasAuraType(SPELL_AURA_PERIODIC_HEAL) &&
                 CanTryToCastSpell(pTarget, m_spells.druid.pSwiftmend))
             {

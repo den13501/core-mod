@@ -2502,7 +2502,11 @@ void CombatBotBaseAI::SummonPetIfNeeded()
         if (me->GetPetGuid())
         {
             if (me->GetPet()->IsAlive())
+            {
+                if (!me->GetPet()->AllSpellsLearned())
+                    me->GetPet()->LearnAllPetSpells();
                 return;
+            }
             else
             {
                 if (me->HasSpell(SPELL_PET_REVIVE))
@@ -2531,7 +2535,11 @@ void CombatBotBaseAI::SummonPetIfNeeded()
     else if (me->GetClass() == CLASS_WARLOCK)
     {
         if (me->GetPetGuid())
+        {
+            if (!me->GetPet()->AllSpellsLearned())
+                me->GetPet()->LearnAllPetSpells();
             return;
+        }
 
         if (m_spells.warlock.pDemonicSacrifice)
         {
