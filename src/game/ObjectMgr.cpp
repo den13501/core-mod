@@ -11125,7 +11125,8 @@ void ObjectMgr::ApplyPremadeGearTemplateToPlayer(uint32 entry, Player* pPlayer) 
         return;
     }
 
-    if (pPlayer->GetLevel() < itr->second.level)
+    if (pPlayer->GetLevel() < itr->second.level &&
+        itr->second.level <= sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL))
     {
         pPlayer->GiveLevel(itr->second.level);
         pPlayer->InitTalentForLevel();
@@ -11183,7 +11184,7 @@ void ObjectMgr::ApplyPremadeGearTemplateToPlayer(uint32 entry, Player* pPlayer) 
                 ammoId = 3029;
             else
                 ammoId = 2512;
-            pPlayer->StoreNewItemInBestSlots(ammoId, 1200);
+            pPlayer->StoreNewItemInBestSlots(ammoId, 2400);
             pPlayer->SetAmmo(ammoId);
         }
         else if (pItem->GetProto()->SubClass == ITEM_SUBCLASS_WEAPON_GUN)
@@ -11198,11 +11199,10 @@ void ObjectMgr::ApplyPremadeGearTemplateToPlayer(uint32 entry, Player* pPlayer) 
                 ammoId = 8068;
             else
                 ammoId = 2516;
-            pPlayer->StoreNewItemInBestSlots(ammoId, 1200);
+            pPlayer->StoreNewItemInBestSlots(ammoId, 2400);
             pPlayer->SetAmmo(ammoId);
         }
     }
-
 }
 
 void ObjectMgr::ApplyPremadeSpecTemplateToPlayer(uint32 entry, Player* pPlayer) const
@@ -11220,7 +11220,8 @@ void ObjectMgr::ApplyPremadeSpecTemplateToPlayer(uint32 entry, Player* pPlayer) 
         return;
     }
 
-    if (pPlayer->GetLevel() < itr->second.level)
+    if (pPlayer->GetLevel() < itr->second.level &&
+        itr->second.level <= sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL))
     {
         pPlayer->GiveLevel(itr->second.level);
         pPlayer->InitTalentForLevel();

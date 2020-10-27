@@ -765,7 +765,7 @@ bool ChatHandler::HandlePartyBotAddCommand(char* args)
     }
 
     uint8 botClass = 0;
-    uint32 botLevel = pPlayer->GetLevel() >= 60 ? pPlayer->GetLevel() : pPlayer->GetLevel() + urand(-1,1);
+    uint32 botLevel = pPlayer->GetLevel() >= sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL) ? pPlayer->GetLevel() : pPlayer->GetLevel() + urand(-1,1);
     CombatBotRoles botRole = ROLE_INVALID;
 
     if (char* arg1 = ExtractArg(&args))
@@ -807,9 +807,9 @@ bool ChatHandler::HandlePartyBotAddCommand(char* args)
             std::vector<uint32> healerClasses = { CLASS_PRIEST, CLASS_DRUID };
 
             /*if (pPlayer->GetTeam() == HORDE)
-                healerClasses.push_back(CLASS_SHAMAN);*/
-            if (pPlayer->GetTeam() == ALLIANCE && botLevel >= 60)
-                healerClasses.push_back(CLASS_PALADIN);
+                healerClasses.push_back(CLASS_SHAMAN);
+            if (pPlayer->GetTeam() == ALLIANCE && botLevel >= sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL))
+                healerClasses.push_back(CLASS_PALADIN);*/
 
             botClass = SelectRandomContainerElement(healerClasses);
             botRole = ROLE_HEALER;

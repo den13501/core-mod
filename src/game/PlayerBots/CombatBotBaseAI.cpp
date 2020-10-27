@@ -20,6 +20,7 @@ enum CombatBotSpells
     SPELL_STORMSTRIKE = 17364,
     SPELL_MOONKIN_FORM = 24858,
     SPELL_LEADER_OF_THE_PACK = 17007,
+    SPELL_CHALLENGING_SHOUT = 1161,
 
     SPELL_SUMMON_IMP = 688,
     SPELL_SUMMON_VOIDWALKER = 697,
@@ -1480,6 +1481,12 @@ void CombatBotBaseAI::PopulateSpellData()
                         m_spells.warrior.pSlam->Id < pSpellEntry->Id)
                         m_spells.warrior.pSlam = pSpellEntry;
                 }
+                else if (pSpellEntry->SpellName[0].find("Challenging Shout") != std::string::npos)
+                {
+                if (!m_spells.warrior.pChallengingShout ||
+                    m_spells.warrior.pChallengingShout->Id < pSpellEntry->Id)
+                    m_spells.warrior.pChallengingShout = pSpellEntry;
+                }
                 break;
             }
             case CLASS_ROGUE:
@@ -1960,8 +1967,11 @@ void CombatBotBaseAI::PopulateSpellData()
                             spellListPeriodicHeal.insert(pSpellEntry);
                             break;
                         case SPELL_AURA_MOD_TAUNT:
-                            spellListTaunt.push_back(pSpellEntry);
+                        {
+                            if(pSpellEntry->Id != SPELL_CHALLENGING_SHOUT)
+                                spellListTaunt.push_back(pSpellEntry);
                             break;
+                        }
                     }
                     break;
                 }
@@ -2504,7 +2514,11 @@ void CombatBotBaseAI::SummonPetIfNeeded()
             if (me->GetPet()->IsAlive())
             {
                 if (!me->GetPet()->AllSpellsLearned())
+                {
                     me->GetPet()->LearnAllPetSpells();
+                    me->GetPet()->SetPower(POWER_HAPPINESS, me->GetPet()->GetMaxPower(POWER_HAPPINESS));
+                    me->GetPet()->SetLoyaltyLevel(BEST_FRIEND);
+                }
                 return;
             }
             else
@@ -2543,14 +2557,17 @@ void CombatBotBaseAI::SummonPetIfNeeded()
 
         if (m_spells.warlock.pDemonicSacrifice)
         {
-            if(!me->HasAura(m_spells.warlock.pDemonicSacrifice->Id))
-                me->CastSpell(me, SPELL_SUMMON_SUCCUBUS, true);
+            me->CastSpell(me, SPELL_SUMMON_SUCCUBUS, true);
             return;
         }
 
         std::vector<uint32> vSummons;
         if (me->HasSpell(SPELL_SUMMON_IMP))
+        {
             vSummons.push_back(SPELL_SUMMON_IMP);
+            vSummons.push_back(SPELL_SUMMON_IMP);
+            vSummons.push_back(SPELL_SUMMON_IMP);
+        }
         if (me->HasSpell(SPELL_SUMMON_VOIDWALKER))
             vSummons.push_back(SPELL_SUMMON_VOIDWALKER);
         if (me->HasSpell(SPELL_SUMMON_FELHUNTER))

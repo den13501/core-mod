@@ -1085,10 +1085,24 @@ bool Pet::LearnAllPetSpells()
         if (!spellInfo)
             continue;
         
-        if (spellInfo->baseLevel <= GetLevel())
+        if (spellInfo->spellLevel <= GetLevel())
         {
             if (LearnSpell(spellInfo->Id))
                 ToggleAutocast(spellInfo->Id, true);
+        }
+    }
+
+    bounds = sSpellMgr.GetSkillLineAbilityMapBoundsBySkillId(SKILL_PET_TALENTS);
+    for (SkillLineAbilityMap::const_iterator _spell_idx = bounds.first; _spell_idx != bounds.second; ++_spell_idx)
+    {
+        SpellEntry const* spellInfo = sSpellMgr.GetSpellEntry(_spell_idx->second->spellId);
+
+        if (!spellInfo || !spellInfo->IsPassiveSpell())
+            continue;
+
+        if (spellInfo->spellLevel <= GetLevel())
+        {
+            LearnSpell(spellInfo->Id);
         }
     }
 

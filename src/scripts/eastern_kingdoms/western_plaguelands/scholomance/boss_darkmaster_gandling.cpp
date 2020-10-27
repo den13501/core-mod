@@ -127,7 +127,7 @@ struct boss_darkmaster_gandlingAI : public ScriptedAI
 
         //Teleporting Random Target to one of the six pre boss rooms and spawn 3-4 skeletons near the gamer.
         //We will only telport if gandling has more than 3% of hp so teleported gamers can always loot.
-        if (m_creature->GetHealthPercent() > 3.0f)
+        if (m_creature->GetHealthPercent() > 10.0f)
         {
             if (Teleport_Timer < diff)
             {
@@ -140,7 +140,7 @@ struct boss_darkmaster_gandlingAI : public ScriptedAI
                             ShadowPortalTargetGUID = pTarget->GetGUID();
                             m_creature->CastSpell(pTarget, 17950, false);     //Shadow Portal (visual)
                             bShadowPortalCasted = true;
-                            Teleport_Timer = 2000;
+                            Teleport_Timer = 5000;
                         }
                     }
                 }
@@ -300,7 +300,7 @@ struct boss_darkmaster_gandlingAI : public ScriptedAI
                                 break;
                         }
                     }
-                    Teleport_Timer = urand(20000, 35000);
+                    Teleport_Timer = urand(35000, 60000);
                 }
             }
             else Teleport_Timer -= diff;

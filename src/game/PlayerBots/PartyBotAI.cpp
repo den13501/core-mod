@@ -42,6 +42,7 @@ enum PartyBotSpells
 
     PB_SPELL_SHIELD_SLAM = 23922,
     PB_SPELL_HOLY_SHIELD = 20925,
+    PB_SPELL_TOUCH_OF_SHADOW = 18791,
 };
 
 enum PartyBotSpecs
@@ -105,7 +106,10 @@ void PartyBotAI::CloneFromPlayer(Player const* pPlayer)
 void PartyBotAI::LearnPremadeSpecForClass()
 {
     
-    me->GiveLevel(m_level);
+    if(m_level > sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL))
+        me->GiveLevel(sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL));
+    else
+        me->GiveLevel(m_level);
     me->InitTalentForLevel();
     me->SetUInt32Value(PLAYER_XP, 0);
     
@@ -391,6 +395,19 @@ Unit* PartyBotAI::SelectPartyAttackTarget() const
                         return pAttacker;
                 }
             }
+
+            if (Pet* pPet = pMember->GetPet())
+            {
+                for (const auto pAttacker : pPet->GetAttackers())
+                {
+                    if (IsValidHostileTarget(pAttacker) &&
+                        me->IsWithinDist(pAttacker, 50.0f))
+                    {
+                        if (--retries <= 0)
+                            return pAttacker;
+                    }
+                }
+            }
         }
     }
 
@@ -638,7 +655,7 @@ void PartyBotAI::UpdateAI(uint32 const diff)
 
     if (me->HasAuraType(SPELL_AURA_FEIGN_DEATH))
     {
-        if (me->GetEnemyCountInRadiusAround(me, 15.0f) > 0)
+        if (me->GetEnemyCountInRadiusAround(me, 20.0f) > 0)
             return;
         else
             me->RemoveSpellsCausingAura(SPELL_AURA_FEIGN_DEATH);
@@ -704,7 +721,12 @@ void PartyBotAI::UpdateAI(uint32 const diff)
             return;
         }
 
-        if (!me->IsMounted())
+        if (!me->IsWithinDistInMap(pLeader, PB_MAX_FOLLOW_DIST))
+        {
+            if (me->GetMotionMaster()->GetCurrentMovementGeneratorType() != FOLLOW_MOTION_TYPE)
+                me->GetMotionMaster()->MoveFollow(pLeader, urand(PB_MIN_FOLLOW_DIST, PB_MAX_FOLLOW_DIST), frand(PB_MIN_FOLLOW_ANGLE, PB_MAX_FOLLOW_ANGLE));
+        }
+        else if (!me->IsMounted())
         {
             if (DrinkAndEat())
                 return;
@@ -776,10 +798,9 @@ void PartyBotAI::UpdateAI(uint32 const diff)
         else
         {
             if (!me->HasUnitState(UNIT_STAT_MELEE_ATTACKING) &&
-               (m_role == ROLE_MELEE_DPS || m_role == ROLE_TANK) &&
-                IsValidHostileTarget(pVictim) &&
-                AttackStart(pVictim))
-                return;
+                (m_role == ROLE_MELEE_DPS || m_role == ROLE_TANK) &&
+                IsValidHostileTarget(pVictim))
+                AttackStart(pVictim);
 
             if (me->GetMotionMaster()->GetCurrentMovementGeneratorType() == FOLLOW_MOTION_TYPE)
                 me->GetMotionMaster()->MoveChase(pVictim);
@@ -1380,7 +1401,8 @@ void PartyBotAI::UpdateInCombatAI_Hunter()
             me->CastSpell(pVictim, PB_SPELL_AUTO_SHOT, false);
 
         if (m_spells.hunter.pVolley &&
-           (me->GetEnemyCountInRadiusAround(pVictim, 10.0f) > 2) &&
+            pVictim->GetHealthPercent() < 75.0f &&
+           (me->GetEnemyCountInRadiusAround(pVictim, 10.0f) > 3) &&
             CanTryToCastSpell(pVictim, m_spells.hunter.pVolley))
         {
             if (DoCastSpell(pVictim, m_spells.hunter.pVolley) == SPELL_CAST_OK)
@@ -1543,12 +1565,15 @@ void PartyBotAI::UpdateOutOfCombatAI_Mage()
 {
     if (m_spells.mage.pArcaneBrilliance)
     {
-        if (CanTryToCastSpell(me, m_spells.mage.pArcaneBrilliance))
+        if (Player* pTarget = SelectBuffTarget(m_spells.mage.pArcaneBrilliance))
         {
-            if (DoCastSpell(me, m_spells.mage.pArcaneBrilliance) == SPELL_CAST_OK)
+            if (CanTryToCastSpell(pTarget, m_spells.mage.pArcaneBrilliance))
             {
-                m_isBuffing = true;
-                return;
+                if (DoCastSpell(pTarget, m_spells.mage.pArcaneBrilliance) == SPELL_CAST_OK)
+                {
+                    m_isBuffing = true;
+                    return;
+                }
             }
         }
     }
@@ -1630,7 +1655,7 @@ void PartyBotAI::UpdateInCombatAI_Mage()
         {
             me->GetMotionMaster()->MoveChase(pVictim, 25.0f);
         }
-        else if (GetAttackersInRangeCount(10.0f))
+        else if (GetAttackersInRangeCount(10.0f) > 1)
         {
             if (m_spells.mage.pManaShield &&
                (me->GetPowerPercent(POWER_MANA) > 20.0f) &&
@@ -1662,9 +1687,8 @@ void PartyBotAI::UpdateInCombatAI_Mage()
                         CanTryToCastSpell(me, m_spells.mage.pFrostNova))
                     {
                         DoCastSpell(me, m_spells.mage.pFrostNova);
+                        RunAwayFromTarget(pVictim);
                     }
-
-                    RunAwayFromTarget(pVictim);
 
                     return;
                 }
@@ -1673,6 +1697,14 @@ void PartyBotAI::UpdateInCombatAI_Mage()
 
         if (me->GetEnemyCountInRadiusAround(me, 10.0f) > 2)
         {
+            if (spec == PB_SPEC_MAGE_ARCANE &&
+                m_spells.mage.pArcaneExplosion &&
+                CanTryToCastSpell(me, m_spells.mage.pArcaneExplosion))
+            {
+                if (DoCastSpell(me, m_spells.mage.pArcaneExplosion) == SPELL_CAST_OK)
+                    return;
+            }
+
             if (m_spells.mage.pConeofCold &&
                 CanTryToCastSpell(me, m_spells.mage.pConeofCold))
             {
@@ -1687,12 +1719,6 @@ void PartyBotAI::UpdateInCombatAI_Mage()
                     return;
             }
 
-            if (m_spells.mage.pArcaneExplosion &&
-                CanTryToCastSpell(me, m_spells.mage.pArcaneExplosion))
-            {
-                if (DoCastSpell(me, m_spells.mage.pArcaneExplosion) == SPELL_CAST_OK)
-                    return;
-            }
         }
 
         if (me->GetMotionMaster()->GetCurrentMovementGeneratorType() == DISTANCING_MOTION_TYPE)
@@ -1723,6 +1749,15 @@ void PartyBotAI::UpdateInCombatAI_Mage()
 
         if (me->GetEnemyCountInRadiusAround(pVictim, 10.0f) > 3 && pVictim->GetHealthPercent() < 75.0f)
         {
+            if (spec == PB_SPEC_MAGE_ARCANE &&
+                m_spells.mage.pArcaneExplosion &&
+                CanTryToCastSpell(pVictim, m_spells.mage.pArcaneExplosion))
+            {
+                // Chase victim at close range to use Arcane Explosion.
+                // Spell is cast on a previous check when in range.
+                me->GetMotionMaster()->MoveChase(pVictim, 5.0f);
+            }
+
             if (spec == PB_SPEC_MAGE_FIRE &&
                 m_spells.mage.pFlamestrike &&
                 CanTryToCastSpell(pVictim, m_spells.mage.pFlamestrike))
@@ -1912,6 +1947,16 @@ void PartyBotAI::UpdateOutOfCombatAI_Priest()
         }
     }
 
+    if (m_spells.priest.pTouchOfWeakness &&
+        CanTryToCastSpell(me, m_spells.priest.pTouchOfWeakness))
+    {
+        if (DoCastSpell(me, m_spells.priest.pTouchOfWeakness) == SPELL_CAST_OK)
+        {
+            m_isBuffing = true;
+            return;
+        }
+    }
+
     if (m_isBuffing &&
        (!m_spells.priest.pPowerWordFortitude ||
         !me->GetGlobalCooldownMgr().HasGlobalCooldown(m_spells.priest.pPowerWordFortitude)))
@@ -1954,6 +1999,17 @@ void PartyBotAI::UpdateInCombatAI_Priest()
                 CanTryToCastSpell(pAttacker, m_spells.priest.pShackleUndead))
             {
                 if (DoCastSpell(pAttacker, m_spells.priest.pShackleUndead) == SPELL_CAST_OK)
+                    return;
+            }
+        }
+
+        if (me->GetHealthPercent() < 50.0f)
+        {
+            if (m_spells.priest.pPsychicScream &&
+                GetAttackersInRangeCount(10.0f) > 1 &&
+                CanTryToCastSpell(me, m_spells.priest.pPsychicScream))
+            {
+                if (DoCastSpell(me, m_spells.priest.pPsychicScream) == SPELL_CAST_OK)
                     return;
             }
         }
@@ -2018,6 +2074,7 @@ void PartyBotAI::UpdateInCombatAI_Priest()
     else if (Unit* pVictim = me->GetVictim())
     {
         if (m_spells.priest.pShadowform &&
+            me->GetShapeshiftForm() != FORM_SHADOW &&
             CanTryToCastSpell(me, m_spells.priest.pShadowform))
         {
             if (DoCastSpell(me, m_spells.priest.pShadowform) == SPELL_CAST_OK)
@@ -2032,21 +2089,6 @@ void PartyBotAI::UpdateInCombatAI_Priest()
                 return;
         }
 
-        if (m_spells.priest.pVampiricEmbrace &&
-            pVictim->GetHealthPercent() < 95.0f &&
-            CanTryToCastSpell(pVictim, m_spells.priest.pVampiricEmbrace))
-        {
-            if (DoCastSpell(pVictim, m_spells.priest.pVampiricEmbrace) == SPELL_CAST_OK)
-                return;
-        }
-
-        if (m_spells.priest.pTouchOfWeakness &&
-            CanTryToCastSpell(pVictim, m_spells.priest.pTouchOfWeakness))
-        {
-            if (DoCastSpell(pVictim, m_spells.priest.pTouchOfWeakness) == SPELL_CAST_OK)
-                return;
-        }
-
         if (m_spells.priest.pManaBurn &&
             me->GetPowerPercent(POWER_MANA) < 50.0f &&
             pVictim->GetPowerType() == POWER_MANA &&
@@ -2057,15 +2099,15 @@ void PartyBotAI::UpdateInCombatAI_Priest()
                 return;
         }
 
-        if (m_spells.priest.pMindBlast &&
-            CanTryToCastSpell(pVictim, m_spells.priest.pMindBlast))
-        {
-            if (DoCastSpell(pVictim, m_spells.priest.pMindBlast) == SPELL_CAST_OK)
-                return;
-        }
-
         if (pVictim->GetHealthPercent() < 95.0f)
         {
+            if (m_spells.priest.pVampiricEmbrace &&
+                CanTryToCastSpell(pVictim, m_spells.priest.pVampiricEmbrace))
+            {
+                if (DoCastSpell(pVictim, m_spells.priest.pVampiricEmbrace) == SPELL_CAST_OK)
+                    return;
+            }
+
             if (m_spells.priest.pShadowWordPain &&
                 CanTryToCastSpell(pVictim, m_spells.priest.pShadowWordPain))
             {
@@ -2079,24 +2121,21 @@ void PartyBotAI::UpdateInCombatAI_Priest()
                 if (DoCastSpell(pVictim, m_spells.priest.pDevouringPlague) == SPELL_CAST_OK)
                     return;
             }
-
-            if (m_spells.priest.pMindFlay &&
-                !pVictim->CanReachWithMeleeAutoAttack(me) &&
-                CanTryToCastSpell(pVictim, m_spells.priest.pMindFlay))
-            {
-                if (DoCastSpell(pVictim, m_spells.priest.pMindFlay) == SPELL_CAST_OK)
-                    return;
-            }
         }
 
-        if (m_spells.priest.pPsychicScream &&
-            GetAttackersInRangeCount(10.0f) &&
-            CanTryToCastSpell(me, m_spells.priest.pPsychicScream))
+        if (m_spells.priest.pMindBlast &&
+            CanTryToCastSpell(pVictim, m_spells.priest.pMindBlast))
         {
-            if (DoCastSpell(me, m_spells.priest.pPsychicScream) == SPELL_CAST_OK)
+            if (DoCastSpell(pVictim, m_spells.priest.pMindBlast) == SPELL_CAST_OK)
                 return;
         }
 
+        if (m_spells.priest.pMindFlay &&
+            CanTryToCastSpell(pVictim, m_spells.priest.pMindFlay))
+        {
+            if (DoCastSpell(pVictim, m_spells.priest.pMindFlay) == SPELL_CAST_OK)
+                return;
+        }
 
         if (me->GetMotionMaster()->GetCurrentMovementGeneratorType() == IDLE_MOTION_TYPE
             && me->GetDistance(pVictim) > 30.0f)
@@ -2155,7 +2194,20 @@ void PartyBotAI::UpdateOutOfCombatAI_Warlock()
         m_isBuffing = false;
     }
 
-    SummonPetIfNeeded();
+    if (m_spells.warlock.pDemonicSacrifice && !me->HasAura(PB_SPELL_TOUCH_OF_SHADOW))
+    {
+        SummonPetIfNeeded();
+
+        if (Pet* pPet = me->GetPet())
+        {
+            if (pPet->IsAlive() &&
+                CanTryToCastSpell(pPet, m_spells.warlock.pDemonicSacrifice))
+            {
+                if (DoCastSpell(pPet, m_spells.warlock.pDemonicSacrifice) == SPELL_CAST_OK)
+                    return;
+            }
+        }
+    }
 
     if (Unit* pVictim = me->GetVictim())
         UpdateInCombatAI_Warlock();
@@ -2202,7 +2254,8 @@ void PartyBotAI::UpdateInCombatAI_Warlock()
         }
 
         if (m_spells.warlock.pRainOfFire &&
-           (me->GetEnemyCountInRadiusAround(pVictim, 10.0f) > 2) &&
+           (me->GetEnemyCountInRadiusAround(pVictim, 10.0f) > 3) &&
+            pVictim->GetHealthPercent() < 75.0f &&
             CanTryToCastSpell(pVictim, m_spells.warlock.pRainOfFire))
         {
             if (DoCastSpell(pVictim, m_spells.warlock.pRainOfFire) == SPELL_CAST_OK)
@@ -2349,24 +2402,8 @@ void PartyBotAI::UpdateInCombatAI_Warrior()
 {
     if (Unit* pVictim = me->GetVictim())
     {
-        if (pVictim->IsNonMeleeSpellCasted(false, false, true))
-        {
-            if (m_spells.warrior.pPummel &&
-                CanTryToCastSpell(pVictim, m_spells.warrior.pPummel))
-            {
-                if (DoCastSpell(pVictim, m_spells.warrior.pPummel) == SPELL_CAST_OK)
-                    return;
-            }
 
-            if (m_spells.warrior.pShieldBash &&
-                IsWearingShield() &&
-                CanTryToCastSpell(pVictim, m_spells.warrior.pShieldBash))
-            {
-                if (DoCastSpell(pVictim, m_spells.warrior.pShieldBash) == SPELL_CAST_OK)
-                    return;
-            }
-        }
-
+        // STANCE SELECTION
         if (m_role == ROLE_TANK || me->GetHealthPercent() < 25.0f)
         {
             if (m_spells.warrior.pDefensiveStance &&
@@ -2393,18 +2430,82 @@ void PartyBotAI::UpdateInCombatAI_Warrior()
             }
         }
 
+        // INTERRUPT ENEMY SPELL CASTING
+        if (pVictim->IsNonMeleeSpellCasted(false, false, true))
+        {
+            if (m_spells.warrior.pPummel &&
+                CanTryToCastSpell(pVictim, m_spells.warrior.pPummel))
+            {
+                if (DoCastSpell(pVictim, m_spells.warrior.pPummel) == SPELL_CAST_OK)
+                    return;
+            }
+
+            if (m_spells.warrior.pShieldBash &&
+                IsWearingShield() &&
+                CanTryToCastSpell(pVictim, m_spells.warrior.pShieldBash))
+            {
+                if (DoCastSpell(pVictim, m_spells.warrior.pShieldBash) == SPELL_CAST_OK)
+                    return;
+            }
+        }
+
+        // CHALLENGING SHOUT
+        if (m_role == ROLE_TANK &&
+            me->GetEnemyCountInRadiusAround(me, 10.0f) > 3 &&
+            GetAttackersInRangeCount(10.0f) <= 1 &&
+            m_spells.warrior.pChallengingShout &&
+            CanTryToCastSpell(me, m_spells.warrior.pChallengingShout))
+        {
+            if (DoCastSpell(me, m_spells.warrior.pChallengingShout) == SPELL_CAST_OK)
+                return;
+        }
+
+        // USE DEFENSIVE SPELLS
+        if (me->GetShapeshiftForm() == FORM_DEFENSIVESTANCE && IsWearingShield())
+        {
+            if (!me->GetAttackers().empty())
+            {
+                if (m_spells.warrior.pShieldBlock &&
+                    (me->GetHealthPercent() < 70.0f) &&
+                    CanTryToCastSpell(me, m_spells.warrior.pShieldBlock))
+                {
+                    if (DoCastSpell(me, m_spells.warrior.pShieldBlock) == SPELL_CAST_OK)
+                        return;
+                }
+
+                if (m_spells.warrior.pShieldWall &&
+                    (me->GetHealthPercent() < 30.0f) &&
+                    CanTryToCastSpell(me, m_spells.warrior.pShieldWall))
+                {
+                    if (DoCastSpell(me, m_spells.warrior.pShieldWall) == SPELL_CAST_OK)
+                        return;
+                }
+            }
+        }
+
+        if (m_spells.warrior.pLastStand &&
+            me->GetHealthPercent() < 20.0f &&
+            CanTryToCastSpell(me, m_spells.warrior.pLastStand))
+        {
+            if (DoCastSpell(me, m_spells.warrior.pLastStand) == SPELL_CAST_OK)
+                return;
+        }
+
+        if (m_role != ROLE_TANK &&
+            m_spells.warrior.pIntimidatingShout &&
+            (me->GetHealthPercent() < 20.0f) &&
+            (GetAttackersInRangeCount(10.0f) > 2) &&
+            CanTryToCastSpell(pVictim, m_spells.warrior.pIntimidatingShout))
+        {
+            if (DoCastSpell(pVictim, m_spells.warrior.pIntimidatingShout) == SPELL_CAST_OK)
+                return;
+        }
+
+        // USE PROC OR CONDITIONAL SPELLS
         if (m_spells.warrior.pRevenge &&
             CanTryToCastSpell(pVictim, m_spells.warrior.pRevenge))
         {
             if (DoCastSpell(pVictim, m_spells.warrior.pRevenge) == SPELL_CAST_OK)
-                return;
-        }
-
-        if (m_spells.warrior.pExecute &&
-           (pVictim->GetHealthPercent() < 20.0f) &&
-            CanTryToCastSpell(pVictim, m_spells.warrior.pExecute))
-        {
-            if (DoCastSpell(pVictim, m_spells.warrior.pExecute) == SPELL_CAST_OK)
                 return;
         }
 
@@ -2422,17 +2523,17 @@ void PartyBotAI::UpdateInCombatAI_Warrior()
                 return;
         }
 
-        if (m_spells.warrior.pLastStand &&
-            me->GetHealthPercent() < 20.0f &&
-            CanTryToCastSpell(me, m_spells.warrior.pLastStand))
+        if (m_spells.warrior.pExecute &&
+           (pVictim->GetHealthPercent() < 20.0f) &&
+            CanTryToCastSpell(pVictim, m_spells.warrior.pExecute))
         {
-            if (DoCastSpell(me, m_spells.warrior.pLastStand) == SPELL_CAST_OK)
+            if (DoCastSpell(pVictim, m_spells.warrior.pExecute) == SPELL_CAST_OK)
                 return;
         }
 
-        if (m_spells.warrior.pDemoralizingShout &&
-            m_role == ROLE_TANK &&
-            me->GetEnemyCountInRadiusAround(pVictim, 8.0f) > 1 &&
+        // DEBUFF ENEMY
+        if (m_role == ROLE_TANK &&
+            m_spells.warrior.pDemoralizingShout &&
             CanTryToCastSpell(pVictim, m_spells.warrior.pDemoralizingShout))
         {
             if (DoCastSpell(pVictim, m_spells.warrior.pDemoralizingShout) == SPELL_CAST_OK)
@@ -2443,6 +2544,37 @@ void PartyBotAI::UpdateInCombatAI_Warrior()
         if (me->GetPowerPercent(POWER_RAGE) < 15.0f)
             return;
 
+        // Use AOE spells
+        if (me->GetEnemyCountInRadiusAround(me, 10.0f) > 3)
+        {
+            if (m_role == ROLE_TANK)
+            {
+                if (m_spells.warrior.pBattleShout &&
+                    CanTryToCastSpell(me, m_spells.warrior.pBattleShout, 2))
+                {
+                    if (DoCastSpell(me, m_spells.warrior.pBattleShout) == SPELL_CAST_OK)
+                        return;
+                }
+            }
+            else if (pVictim->GetHealthPercent() < 75.0f)
+            {
+                if (m_spells.warrior.pWhirlwind &&
+                    CanTryToCastSpell(pVictim, m_spells.warrior.pWhirlwind))
+                {
+                    if (DoCastSpell(pVictim, m_spells.warrior.pWhirlwind) == SPELL_CAST_OK)
+                        return;
+                }
+
+                if (m_spells.warrior.pThunderClap &&
+                    CanTryToCastSpell(pVictim, m_spells.warrior.pThunderClap))
+                {
+                    if (DoCastSpell(pVictim, m_spells.warrior.pThunderClap) == SPELL_CAST_OK)
+                        return;
+                }
+            }
+        }
+
+        // Use single target spells
         if (m_spells.warrior.pShieldSlam &&
             CanTryToCastSpell(pVictim, m_spells.warrior.pShieldSlam))
         {
@@ -2472,37 +2604,12 @@ void PartyBotAI::UpdateInCombatAI_Warrior()
                 return;
         }
 
-        if (m_spells.warrior.pSunderArmor &&
-            m_role == ROLE_TANK &&
+        if (m_role == ROLE_TANK &&
+            m_spells.warrior.pSunderArmor &&
             CanTryToCastSpell(pVictim, m_spells.warrior.pSunderArmor, 2))
         {
             if (DoCastSpell(pVictim, m_spells.warrior.pSunderArmor) == SPELL_CAST_OK)
                 return;
-        }
-
-        if (m_role != ROLE_TANK && me->GetEnemyCountInRadiusAround(pVictim, 8.0f) > 1)
-        {
-            if (m_spells.warrior.pWhirlwind &&
-                CanTryToCastSpell(pVictim, m_spells.warrior.pWhirlwind))
-            {
-                if (DoCastSpell(pVictim, m_spells.warrior.pWhirlwind) == SPELL_CAST_OK)
-                    return;
-            }
-
-            if (m_spells.warrior.pThunderClap &&
-                CanTryToCastSpell(pVictim, m_spells.warrior.pThunderClap))
-            {
-                if (DoCastSpell(pVictim, m_spells.warrior.pThunderClap) == SPELL_CAST_OK)
-                    return;
-            }
-
-            if (m_spells.warrior.pCleave &&
-                m_role != ROLE_TANK &&
-                CanTryToCastSpell(pVictim, m_spells.warrior.pCleave))
-            {
-                if (DoCastSpell(pVictim, m_spells.warrior.pCleave) == SPELL_CAST_OK)
-                    return;
-            }
         }
 
         if (m_spells.warrior.pHamstring &&
@@ -2515,25 +2622,11 @@ void PartyBotAI::UpdateInCombatAI_Warrior()
                 return;
         }
 
-        if (me->GetShapeshiftForm() == FORM_DEFENSIVESTANCE && IsWearingShield())
+        if (m_spells.warrior.pRend &&
+            CanTryToCastSpell(pVictim, m_spells.warrior.pRend))
         {
-            if (!me->GetAttackers().empty())
-            {
-                if (m_spells.warrior.pShieldBlock &&
-                    CanTryToCastSpell(me, m_spells.warrior.pShieldBlock))
-                {
-                    if (DoCastSpell(me, m_spells.warrior.pShieldBlock) == SPELL_CAST_OK)
-                        return;
-                }
-
-                if (m_spells.warrior.pShieldWall &&
-                    (me->GetHealthPercent() < 40.0f) &&
-                    CanTryToCastSpell(me, m_spells.warrior.pShieldWall))
-                {
-                    if (DoCastSpell(me, m_spells.warrior.pShieldWall) == SPELL_CAST_OK)
-                        return;
-                }
-            }
+            if (DoCastSpell(pVictim, m_spells.warrior.pRend) == SPELL_CAST_OK)
+                return;
         }
 
         if (m_spells.warrior.pDisarm &&
@@ -2544,20 +2637,12 @@ void PartyBotAI::UpdateInCombatAI_Warrior()
                 return;
         }
 
-        if (m_role != ROLE_TANK &&
-            m_spells.warrior.pIntimidatingShout &&
-           (me->GetHealthPercent() < 30.0f) &&
-           (GetAttackersInRangeCount(10.0f) > 2) &&
-            CanTryToCastSpell(pVictim, m_spells.warrior.pIntimidatingShout))
+        if (m_spells.warrior.pSweepingStrikes &&
+            pVictim->GetHealthPercent() < 75.0f &&
+            CanTryToCastSpell(me, m_spells.warrior.pSweepingStrikes) &&
+            (me->GetEnemyCountInRadiusAround(pVictim, 10.0f) > 2))
         {
-            if (DoCastSpell(pVictim, m_spells.warrior.pIntimidatingShout) == SPELL_CAST_OK)
-                return;
-        }
-
-        if (m_spells.warrior.pRend &&
-            CanTryToCastSpell(pVictim, m_spells.warrior.pRend))
-        {
-            if (DoCastSpell(pVictim, m_spells.warrior.pRend) == SPELL_CAST_OK)
+            if (DoCastSpell(me, m_spells.warrior.pSweepingStrikes) == SPELL_CAST_OK)
                 return;
         }
 
@@ -2569,30 +2654,22 @@ void PartyBotAI::UpdateInCombatAI_Warrior()
                 return;
         }
 
-        if (m_spells.warrior.pSweepingStrikes &&
-            CanTryToCastSpell(me, m_spells.warrior.pSweepingStrikes) &&
-           (me->GetEnemyCountInRadiusAround(pVictim, 10.0f) > 2))
-        {
-            if (DoCastSpell(me, m_spells.warrior.pSweepingStrikes) == SPELL_CAST_OK)
-                return;
-        }
-
         if (m_role != ROLE_TANK &&
            (me->GetHealthPercent() > 60.0f) && (pVictim->GetHealthPercent() > 40.0f) &&
            !me->HasUnitState(UNIT_STAT_ROOT) &&
            !me->IsImmuneToMechanic(MECHANIC_FEAR))
         {
-            if (m_spells.warrior.pRecklessness &&
-                CanTryToCastSpell(me, m_spells.warrior.pRecklessness))
-            {
-                if (DoCastSpell(me, m_spells.warrior.pRecklessness) == SPELL_CAST_OK)
-                    return;
-            }
-
             if (m_spells.warrior.pDeathWish &&
                 CanTryToCastSpell(me, m_spells.warrior.pDeathWish))
             {
                 if (DoCastSpell(me, m_spells.warrior.pDeathWish) == SPELL_CAST_OK)
+                    return;
+            }
+
+            if (m_spells.warrior.pRecklessness &&
+                CanTryToCastSpell(me, m_spells.warrior.pRecklessness))
+            {
+                if (DoCastSpell(me, m_spells.warrior.pRecklessness) == SPELL_CAST_OK)
                     return;
             }
         }
@@ -2604,21 +2681,21 @@ void PartyBotAI::UpdateInCombatAI_Warrior()
                 return;
         }
 
+        // LASTLY USE FILLER SPELLS
+        if(me->GetEnemyCountInRadiusAround(pVictim, 8.0f) > 1 &&
+            m_spells.warrior.pCleave &&
+            CanTryToCastSpell(pVictim, m_spells.warrior.pCleave))
+        {
+            if (DoCastSpell(pVictim, m_spells.warrior.pCleave) == SPELL_CAST_OK)
+                return;
+        }
+
         if (m_spells.warrior.pHeroicStrike &&
             CanTryToCastSpell(pVictim, m_spells.warrior.pHeroicStrike))
         {
             if (DoCastSpell(pVictim, m_spells.warrior.pHeroicStrike) == SPELL_CAST_OK)
                 return;
         }
-
-        // Slam only good for two handed weapon and improved Slam Talent
-        /*if (me->GetShapeshiftForm() == FORM_BERSERKERSTANCE &&
-            m_spells.warrior.pSlam &&
-            CanTryToCastSpell(pVictim, m_spells.warrior.pSlam))
-        {
-            if (DoCastSpell(pVictim, m_spells.warrior.pSlam) == SPELL_CAST_OK)
-                return;
-        }*/
 
     }
     else // no victim

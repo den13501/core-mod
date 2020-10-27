@@ -221,17 +221,17 @@ struct instance_scholomance : public ScriptedInstance
                 if (uiData == IN_PROGRESS)
                 {
                     m_uiBoneMinionCount0 = 0;
-                    if (GameObject* pGo = instance->GetGameObject(m_uiGatePolkeltGUID))
+                    /*if (GameObject* pGo = instance->GetGameObject(m_uiGatePolkeltGUID))
                         if (pGo->GetGoState() == GO_STATE_ACTIVE) // ouverte
-                            DoUseDoorOrButton(m_uiGatePolkeltGUID);
+                            DoUseDoorOrButton(m_uiGatePolkeltGUID);*/
                 }
                 else if (uiData == DONE)
                 {
                     ++m_uiBoneMinionCount0;
-                    if (m_uiBoneMinionCount0 > 2)
+                    /*if (m_uiBoneMinionCount0 > 2)
                         if (GameObject* pGo = instance->GetGameObject(m_uiGatePolkeltGUID))
                             if (pGo->GetGoState() != GO_STATE_ACTIVE) // fermée
-                                DoUseDoorOrButton(m_uiGatePolkeltGUID);
+                                DoUseDoorOrButton(m_uiGatePolkeltGUID);*/
                 }
                 break;
             case TYPE_BONEMINION1:
@@ -239,17 +239,17 @@ struct instance_scholomance : public ScriptedInstance
                 if (uiData == IN_PROGRESS)
                 {
                     m_uiBoneMinionCount1 = 0;
-                    if (GameObject* pGo = instance->GetGameObject(m_uiGateTheolenGUID))
+                    /*if (GameObject* pGo = instance->GetGameObject(m_uiGateTheolenGUID))
                         if (pGo->GetGoState() == GO_STATE_ACTIVE) // ouverte
-                            DoUseDoorOrButton(m_uiGateTheolenGUID);
+                            DoUseDoorOrButton(m_uiGateTheolenGUID);*/
                 }
                 else if (uiData == DONE)
                 {
                     ++m_uiBoneMinionCount1;
-                    if (m_uiBoneMinionCount1 > 3)
+                    /*if (m_uiBoneMinionCount1 > 3)
                         if (GameObject* pGo = instance->GetGameObject(m_uiGateTheolenGUID))
                             if (pGo->GetGoState() != GO_STATE_ACTIVE) // fermée
-                                DoUseDoorOrButton(m_uiGateTheolenGUID);
+                                DoUseDoorOrButton(m_uiGateTheolenGUID);*/
                 }
                 break;
             case TYPE_BONEMINION2:
@@ -257,17 +257,17 @@ struct instance_scholomance : public ScriptedInstance
                 if (uiData == IN_PROGRESS)
                 {
                     m_uiBoneMinionCount2 = 0;
-                    if (GameObject* pGo = instance->GetGameObject(m_uiGateMiliciaGUID))
+                    /*if (GameObject* pGo = instance->GetGameObject(m_uiGateMiliciaGUID))
                         if (pGo->GetGoState() == GO_STATE_ACTIVE) // ouverte
-                            DoUseDoorOrButton(m_uiGateMiliciaGUID);
+                            DoUseDoorOrButton(m_uiGateMiliciaGUID);*/
                 }
                 else if (uiData == DONE)
                 {
                     ++m_uiBoneMinionCount2;
-                    if (m_uiBoneMinionCount2 > 2)
+                    /*if (m_uiBoneMinionCount2 > 2)
                         if (GameObject* pGo = instance->GetGameObject(m_uiGateMiliciaGUID))
                             if (pGo->GetGoState() != GO_STATE_ACTIVE) // fermée
-                                DoUseDoorOrButton(m_uiGateMiliciaGUID);
+                                DoUseDoorOrButton(m_uiGateMiliciaGUID);*/
                 }
                 break;
             case TYPE_BONEMINION3:
@@ -275,17 +275,17 @@ struct instance_scholomance : public ScriptedInstance
                 if (uiData == IN_PROGRESS)
                 {
                     m_uiBoneMinionCount3 = 0;
-                    if (GameObject* pGo = instance->GetGameObject(m_uiGateIlluciaGUID))
+                    /*if (GameObject* pGo = instance->GetGameObject(m_uiGateIlluciaGUID))
                         if (pGo->GetGoState() == GO_STATE_ACTIVE) // ouverte
-                            DoUseDoorOrButton(m_uiGateIlluciaGUID);
+                            DoUseDoorOrButton(m_uiGateIlluciaGUID);*/
                 }
                 else if (uiData == DONE)
                 {
                     ++m_uiBoneMinionCount3;
-                    if (m_uiBoneMinionCount3 > 2)
+                    /*if (m_uiBoneMinionCount3 > 2)
                         if (GameObject* pGo = instance->GetGameObject(m_uiGateIlluciaGUID))
                             if (pGo->GetGoState() != GO_STATE_ACTIVE) // fermée
-                                DoUseDoorOrButton(m_uiGateIlluciaGUID);
+                                DoUseDoorOrButton(m_uiGateIlluciaGUID);*/
                 }
                 break;
             case TYPE_BONEMINION4:
@@ -293,17 +293,17 @@ struct instance_scholomance : public ScriptedInstance
                 if (uiData == IN_PROGRESS)
                 {
                     m_uiBoneMinionCount4 = 0;
-                    if (GameObject* pGo = instance->GetGameObject(m_uiGateBarovGUID))
+                    /*if (GameObject* pGo = instance->GetGameObject(m_uiGateBarovGUID))
                         if (pGo->GetGoState() == GO_STATE_ACTIVE) // ouverte
-                            DoUseDoorOrButton(m_uiGateBarovGUID);
+                            DoUseDoorOrButton(m_uiGateBarovGUID);*/
                 }
                 else if (uiData == DONE)
                 {
                     ++m_uiBoneMinionCount4;
-                    if (m_uiBoneMinionCount4 > 3)
+                    /*if (m_uiBoneMinionCount4 > 3)
                         if (GameObject* pGo = instance->GetGameObject(m_uiGateBarovGUID))
                             if (pGo->GetGoState() != GO_STATE_ACTIVE) // fermée
-                                DoUseDoorOrButton(m_uiGateBarovGUID);
+                                DoUseDoorOrButton(m_uiGateBarovGUID);*/
                 }
                 break;
             case TYPE_BONEMINION5:
@@ -311,17 +311,17 @@ struct instance_scholomance : public ScriptedInstance
                 if (uiData == IN_PROGRESS)
                 {
                     m_uiBoneMinionCount5 = 0;
-                    if (GameObject* pGo = instance->GetGameObject(m_uiGateRavenianGUID))
+                    /*if (GameObject* pGo = instance->GetGameObject(m_uiGateRavenianGUID))
                         if (pGo->GetGoState() == GO_STATE_ACTIVE) // ouverte
-                            DoUseDoorOrButton(m_uiGateRavenianGUID);
+                            DoUseDoorOrButton(m_uiGateRavenianGUID);*/
                 }
                 else if (uiData == DONE)
                 {
                     ++m_uiBoneMinionCount5;
-                    if (m_uiBoneMinionCount5 > 2)
+                    /*if (m_uiBoneMinionCount5 > 2)
                         if (GameObject* pGo = instance->GetGameObject(m_uiGateRavenianGUID))
                             if (pGo->GetGoState() != GO_STATE_ACTIVE) // fermée
-                                DoUseDoorOrButton(m_uiGateRavenianGUID);
+                                DoUseDoorOrButton(m_uiGateRavenianGUID);*/
                 }
                 break;
             default:

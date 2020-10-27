@@ -125,6 +125,11 @@ void AuctionHouseBotMgr::AddItem(AuctionHouseBotEntry e, AuctionHouseObject *auc
 {
     ASSERT(m_auctionHouseEntry);
 
+    uint32 itemStack = 1;
+    float priceFactor = 1.0f;
+    uint32 itemBid = 100;
+    uint32 itemBuyOut = 1000;
+
     ItemPrototype const* prototype = sObjectMgr.GetItemPrototype(e.item);
     if (prototype == nullptr)
     {
@@ -145,23 +150,57 @@ void AuctionHouseBotMgr::AddItem(AuctionHouseBotEntry e, AuctionHouseObject *auc
     if (randomPropertyId != 0)
         item->SetItemRandomProperties(randomPropertyId);
 
-    uint32 etime = urand(1, 3);
+    uint32 etime = urand(1, 5);
     switch (etime)
     {
         case 1:
-            etime = 43200;
+            etime = urand(7200,28800);
             break;
         case 2:
-            etime = 86400;
-            break;
         case 3:
-            etime = 172800;
+            etime = urand(28800, 57600);
+            break;
+        case 4:
+        case 5:
+            etime = 86400;
             break;
         default:
             etime = 86400;
             break;
     }
-    item->SetCount(e.stack);
+
+    if (e.stack > 1)
+    {
+        switch (urand(1, 5))
+        {
+            case 1:
+                itemStack = urand(1, e.stack);
+                break;
+            case 2:
+                itemStack = 1;
+                break;
+            case 3:
+                itemStack = e.stack / 2;
+                break;
+            case 4:
+            case 5:
+                itemStack = e.stack;
+                break;
+            default:
+                itemStack = 1;
+                break;
+        }
+        priceFactor = (float)itemStack / (float)e.stack;
+    }
+    else
+        itemStack = e.stack;
+
+    itemBid = priceFactor * frand(0.5f, 1.5f) * e.bid;
+    itemBuyOut = priceFactor * frand(0.85f, 1.5f) * e.buyout;
+    if (itemBid > itemBuyOut)
+        itemBid = itemBuyOut - 1;
+
+    item->SetCount(itemStack);
 
     uint32 dep = sAuctionMgr.GetAuctionDeposit(m_auctionHouseEntry, etime, item);
 
@@ -171,8 +210,8 @@ void AuctionHouseBotMgr::AddItem(AuctionHouseBotEntry e, AuctionHouseObject *auc
     auctionEntry->itemGuidLow        = item->GetGUIDLow();
     auctionEntry->itemTemplate       = item->GetEntry();
     auctionEntry->owner              = 0;
-    auctionEntry->startbid           = e.bid;
-    auctionEntry->buyout             = e.buyout;
+    auctionEntry->startbid           = itemBid;
+    auctionEntry->buyout             = itemBuyOut;
     auctionEntry->bidder             = 0;
     auctionEntry->bid                = 0;
     auctionEntry->deposit            = dep;
