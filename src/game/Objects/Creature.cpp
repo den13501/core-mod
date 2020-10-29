@@ -1135,6 +1135,7 @@ bool Creature::Create(uint32 guidlow, CreatureCreatePos& cPos, CreatureInfo cons
 
     LoadCreatureAddon();
     InitializeReactState();
+    SetWalk(!HasExtraFlag(CREATURE_FLAG_EXTRA_ALWAYS_RUN), true);
     return true;
 }
 
@@ -1624,8 +1625,6 @@ bool Creature::CreateFromProto(uint32 guidlow, CreatureInfo const* cinfo, Team t
 
     Object::_Create(guidlow, firstCreatureId, cinfo->GetHighGuid());
 
-    SetWalk(true, true);
-
     return UpdateEntry(cinfo->entry, team, data, eventData, false);
 }
 
@@ -1942,7 +1941,7 @@ void Creature::SetDeathState(DeathState s)
         SetUInt32Value(UNIT_NPC_FLAGS, cinfo->npc_flags);
         RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_SKINNABLE);
 
-        SetWalk(true, true);
+        SetWalk(!HasExtraFlag(CREATURE_FLAG_EXTRA_ALWAYS_RUN), true);
         i_motionMaster.Initialize();
     }
 }
