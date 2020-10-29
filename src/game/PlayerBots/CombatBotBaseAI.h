@@ -89,6 +89,7 @@ public:
     void SummonPetIfNeeded();
     
     uint8 GetAttackersInRangeCount(float range) const;
+    uint8 GetAlliesNeedingHealCount(float range, float healthPercent) const;
     Unit* SelectAttackerDifferentFrom(Unit const* pExcept) const;
     Unit* SelectHealTarget(float selfHealPercent = 100.0f, float groupHealPercent = 100.0f) const;
     Unit* SelectPeriodicHealTarget(float selfHealPercent = 100.0f, float groupHealPercent = 100.0f) const;
@@ -331,6 +332,7 @@ public:
             SpellEntry const* pDivineSpirit;
             SpellEntry const* pPrayerofSpirit;
             SpellEntry const* pPrayerofFortitude;
+            SpellEntry const* pPrayerofHealing;
             SpellEntry const* pInnerFire;
             SpellEntry const* pShadowProtection;
             SpellEntry const* pPowerWordShield;
@@ -477,6 +479,7 @@ public:
             SpellEntry const* pHibernate;
             SpellEntry const* pSwiftmend;
             SpellEntry const* pOmenOfClarity;
+            SpellEntry const* pTranquility;
             // Cat
             SpellEntry const* pProwl;
             SpellEntry const* pPounce;

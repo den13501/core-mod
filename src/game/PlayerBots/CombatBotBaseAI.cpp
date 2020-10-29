@@ -999,6 +999,12 @@ void CombatBotBaseAI::PopulateSpellData()
                         m_spells.priest.pPrayerofFortitude->Id < pSpellEntry->Id)
                         m_spells.priest.pPrayerofFortitude = pSpellEntry;
                 }
+                else if (pSpellEntry->SpellName[0].find("Prayer of Healing") != std::string::npos)
+                {
+                    if (!m_spells.priest.pPrayerofHealing ||
+                        m_spells.priest.pPrayerofHealing->Id < pSpellEntry->Id)
+                        m_spells.priest.pPrayerofHealing = pSpellEntry;
+                }
                 else if (pSpellEntry->SpellName[0].find("Inner Fire") != std::string::npos)
                 {
                     if (!m_spells.priest.pInnerFire ||
@@ -1941,6 +1947,12 @@ void CombatBotBaseAI::PopulateSpellData()
                         m_spells.druid.pOmenOfClarity->Id < pSpellEntry->Id)
                         m_spells.druid.pOmenOfClarity = pSpellEntry;
                 }
+                else if (pSpellEntry->SpellName[0].find("Tranquility") != std::string::npos)
+                {
+                if (!m_spells.druid.pTranquility ||
+                    m_spells.druid.pTranquility->Id < pSpellEntry->Id)
+                    m_spells.druid.pTranquility = pSpellEntry;
+                }
                 break;
             }
         }
@@ -2424,6 +2436,31 @@ uint8 CombatBotBaseAI::GetAttackersInRangeCount(float range) const
     {
         if (me->GetCombatDistance(pTarget) <= range)
             count++;
+    }
+
+    return count;
+}
+
+uint8 CombatBotBaseAI::GetAlliesNeedingHealCount(float range, float healthPercent) const
+{
+    uint8 count = 0;
+
+    if (Group* pGroup = me->GetGroup())
+    {
+        for (GroupReference* itr = pGroup->GetFirstMember(); itr != nullptr; itr = itr->next())
+        {
+            if (Unit* pMember = itr->getSource())
+            {
+                if (me->GetDistance(pMember) > range)
+                    continue;
+                // Check if we should heal party member.
+                if (IsValidHealTarget(pMember, healthPercent))
+                    count++;
+                // Also check pets.
+                if ((pMember = pMember->GetPet()) && IsValidHealTarget(pMember, healthPercent))
+                    count++;
+            }
+        }
     }
 
     return count;

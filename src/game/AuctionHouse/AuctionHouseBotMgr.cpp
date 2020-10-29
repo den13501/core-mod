@@ -116,6 +116,10 @@ void AuctionHouseBotMgr::Update(bool force /* = false */)
     while (auctions < items)
     {
         AuctionHouseBotEntry item = m_items[urand(0, entriesCount - 1)];
+        // Makes single items and the most expensive appear at half the rate
+        // of materials and consumables
+        if ((item.stack == 1 || item.buyout >= 1000000 ) && urand(0, 1))
+            continue;
         AddItem(item, auctionHouse);
         auctions++;
     }

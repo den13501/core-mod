@@ -797,10 +797,6 @@ bool ChatHandler::HandlePartyBotAddCommand(char* args)
             else
                 dpsClasses.push_back(CLASS_PALADIN);
             botClass = SelectRandomContainerElement(dpsClasses);
-            if (botClass == CLASS_DRUID)
-                botRole == urand(0, 1) ? ROLE_MELEE_DPS : ROLE_RANGE_DPS;
-            else
-                botRole = CombatBotBaseAI::IsMeleeWeaponClass(botClass) ? ROLE_MELEE_DPS : ROLE_RANGE_DPS;
         }
         else if (option == "healer")
         {
@@ -808,7 +804,7 @@ bool ChatHandler::HandlePartyBotAddCommand(char* args)
 
             /*if (pPlayer->GetTeam() == HORDE)
                 healerClasses.push_back(CLASS_SHAMAN);
-            if (pPlayer->GetTeam() == ALLIANCE && botLevel >= sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL))
+            if (pPlayer->GetTeam() == ALLIANCE)
                 healerClasses.push_back(CLASS_PALADIN);*/
 
             botClass = SelectRandomContainerElement(healerClasses);
@@ -835,8 +831,13 @@ bool ChatHandler::HandlePartyBotAddCommand(char* args)
         return false;
     }
     
-    if(botClass && botRole == ROLE_INVALID)
-        botRole = CombatBotBaseAI::IsMeleeWeaponClass(botClass) ? ROLE_MELEE_DPS : ROLE_RANGE_DPS;
+    if (botRole == ROLE_INVALID)
+    {
+        if (botClass == CLASS_DRUID)
+            botRole == urand(0, 1) ? ROLE_MELEE_DPS : ROLE_RANGE_DPS;
+        else
+            botRole = CombatBotBaseAI::IsMeleeWeaponClass(botClass) ? ROLE_MELEE_DPS : ROLE_RANGE_DPS;
+    }
 
     uint8 botRace = SelectRandomRaceForClass(botClass, pPlayer->GetTeam());
 
