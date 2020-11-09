@@ -915,7 +915,7 @@ void CombatBotBaseAI::PopulateSpellData()
                         m_spells.mage.pBlink->Rank < pSpellEntry->Rank)
                         m_spells.mage.pBlink = pSpellEntry;
                 }
-                else if (pSpellEntry->Id == (12826)) // Sheep
+                else if (pSpellEntry->SpellName[0] == "Polymorph") // Sheep
                 {
                     if (!pPolymorphSheep ||
                         pPolymorphSheep->Rank < pSpellEntry->Rank)
