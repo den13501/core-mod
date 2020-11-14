@@ -94,6 +94,7 @@ public:
     Unit* SelectHealTarget(float selfHealPercent = 100.0f, float groupHealPercent = 100.0f) const;
     Unit* SelectPeriodicHealTarget(float selfHealPercent = 100.0f, float groupHealPercent = 100.0f) const;
     Player* SelectBuffTarget(SpellEntry const* pSpellEntry) const;
+    Player* SelectBuffTarget(SpellEntry const* pSpellEntryMeele, SpellEntry const* pSpellEntryRanged) const;
     Player* SelectDispelTarget(SpellEntry const* pSpellEntry) const;
     bool IsValidBuffTarget(Unit const* pTarget, SpellEntry const* pSpellEntry) const;
     bool IsValidHealTarget(Unit const* pTarget, float healthPercent = 100.0f) const;
@@ -229,7 +230,9 @@ public:
             SpellEntry const* pAura;
             SpellEntry const* pSeal;
             SpellEntry const* pSealOfWisdom;
+            SpellEntry const* pSealOfCrusader;
             SpellEntry const* pBlessingBuff;
+            SpellEntry const* pBlessingBuffRanged;
             SpellEntry const* pBlessingOfProtection;
             SpellEntry const* pBlessingOfFreedom;
             SpellEntry const* pBlessingOfSacrifice;
@@ -381,6 +384,8 @@ public:
             SpellEntry const* pCurseofTongues;
             SpellEntry const* pCurseofExhaustion;
             SpellEntry const* pLifeTap;
+            SpellEntry const* pDarkPact;
+            SpellEntry const* pRaidCurse;
         } warlock;
         struct
         {
@@ -509,6 +514,7 @@ public:
     bool m_initialized = false;
     bool m_isBuffing = false;
     bool m_receivedBgInvite = false;
+    uint32 m_petId = 0;
     CombatBotRoles m_role = ROLE_INVALID;
 };
 

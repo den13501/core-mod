@@ -198,9 +198,12 @@ void AuctionHouseBotMgr::AddItem(AuctionHouseBotEntry e, AuctionHouseObject *auc
     }
     else
         itemStack = e.stack;
-
-    itemBid = priceFactor * frand(0.5f, 1.5f) * e.bid;
-    itemBuyOut = priceFactor * frand(0.85f, 1.5f) * e.buyout;
+    
+    itemBid = priceFactor * (urand(10,30) * 0.05f) * e.bid;
+    itemBuyOut = priceFactor * (urand(16,30) * 0.05f) * e.buyout;
+    if (!urand(0, 4))
+        itemBuyOut--;
+        
     if (itemBid > itemBuyOut)
         itemBid = itemBuyOut - 1;
 
