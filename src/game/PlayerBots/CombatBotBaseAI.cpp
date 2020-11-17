@@ -1967,9 +1967,15 @@ void CombatBotBaseAI::PopulateSpellData()
                 }
                 else if (pSpellEntry->SpellName[0].find("Tranquility") != std::string::npos)
                 {
-                if (!m_spells.druid.pTranquility ||
-                    m_spells.druid.pTranquility->Id < pSpellEntry->Id)
-                    m_spells.druid.pTranquility = pSpellEntry;
+                    if (!m_spells.druid.pTranquility ||
+                        m_spells.druid.pTranquility->Id < pSpellEntry->Id)
+                        m_spells.druid.pTranquility = pSpellEntry;
+                }
+                else if (pSpellEntry->SpellName[0].find("Remove Curse") != std::string::npos)
+                {
+                    if (!m_spells.druid.pRemoveCurse ||
+                        m_spells.druid.pRemoveCurse->Id < pSpellEntry->Id)
+                        m_spells.druid.pRemoveCurse = pSpellEntry;
                 }
                 break;
             }
@@ -2337,8 +2343,9 @@ Unit* CombatBotBaseAI::SelectHealTarget(float selfHealPercent, float groupHealPe
     if (me->GetHealthPercent() < selfHealPercent)
         return me;
 
-    std::vector<Unit*> vPlayerTargets;
-    std::vector<Unit*> vPetTargets;
+    std::vector<Unit*> vHighPriority;
+    std::vector<Unit*> vMediumPriority;
+    std::vector<Unit*> vLowPriority;
 
     Unit* pTarget = nullptr;
 
@@ -2346,26 +2353,36 @@ Unit* CombatBotBaseAI::SelectHealTarget(float selfHealPercent, float groupHealPe
     {
         for (GroupReference* itr = pGroup->GetFirstMember(); itr != nullptr; itr = itr->next())
         {
-            if (Unit* pMember = itr->getSource())
+            if (Player* pMember = itr->getSource())
             {
                 // We already checked self.
                 if (pMember == me)
                     continue;
 
-                // Check if we should heal party member.
+                // Check if we should heal group member.
                 if (IsValidHealTarget(pMember, groupHealPercent))
-                    vPlayerTargets.push_back(pMember);
+                {
+                    if (pMember->GetSubGroup() == me->GetSubGroup())
+                        vHighPriority.push_back(pMember);
+                    else
+                        vMediumPriority.push_back(pMember);
+                }
                 // Also check pets.
-                if ((pMember = pMember->GetPet()) && IsValidHealTarget(pMember, groupHealPercent))
-                    vPetTargets.push_back(pMember);
+                if (Unit* pPet = pMember->GetPet())
+                {
+                    if (IsValidHealTarget(pPet, groupHealPercent))
+                        vLowPriority.push_back(pMember);
+                }
             }
         }
     }
 
-    if (!vPlayerTargets.empty())
-        pTarget = SelectRandomContainerElement(vPlayerTargets);
-    else if(!vPetTargets.empty())
-        pTarget = SelectRandomContainerElement(vPetTargets);
+    if (!vHighPriority.empty())
+        pTarget = SelectRandomContainerElement(vHighPriority);
+    else if (!vMediumPriority.empty())
+        pTarget = SelectRandomContainerElement(vMediumPriority);
+    else if(!vLowPriority.empty())
+        pTarget = SelectRandomContainerElement(vLowPriority);
 
     return pTarget;
 }

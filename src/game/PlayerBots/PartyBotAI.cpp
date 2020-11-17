@@ -18,6 +18,13 @@ enum PartyBotSpells
     PB_SPELL_AUTO_SHOT = 75,
     PB_SPELL_SHOOT_WAND = 5019,
     PB_SPELL_HONORLESS_TARGET = 2479,
+    PB_SPELL_POT_REJUV = 22729,
+    PB_SPELL_ELX_MAGEBL = 24363,
+    PB_SPELL_ELX_MOONG = 17538,
+    PB_SPELL_ELX_FORCE = 17537,
+    PB_SPELL_FLASK_TITAN = 17626,
+    PB_SPELL_FLASK_SPOWER = 17628,
+    PB_SPELL_FLASK_WISDOM = 17627,
 
     PB_SPELL_MOUNT_40_HUMAN = 470,
     PB_SPELL_MOUNT_40_NELF = 10787,
@@ -613,6 +620,7 @@ void PartyBotAI::UpdateAI(uint32 const diff)
         me->UpdateSkillsToMaxSkillsForLevel();
         me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
         SummonPetIfNeeded();
+        PopulateConsumableSpellData();
 
         uint32 newzone, newarea;
         me->GetZoneAndAreaId(newzone, newarea);
@@ -811,6 +819,27 @@ void PartyBotAI::UpdateOutOfCombatAI()
                 if (DoCastSpell(pTarget, m_resurrectionSpell) == SPELL_CAST_OK)
                     return;
 
+    if (m_elixirSpell &&
+        !me->HasAura(m_elixirSpell->Id))
+    {
+        if (CanTryToCastSpell(me, m_elixirSpell))
+        {
+            if (DoCastSpell(me, m_elixirSpell) == SPELL_CAST_OK)
+                return;
+        }
+    }
+
+    if (m_flaskSpell &&
+        me->GetGroup()->isRaidGroup() &&
+        !me->HasAura(m_flaskSpell->Id))
+    {
+        if (CanTryToCastSpell(me, m_flaskSpell))
+        {
+            if (DoCastSpell(me, m_flaskSpell) == SPELL_CAST_OK)
+                return;
+        }
+    }
+
     switch (me->GetClass())
     {
         case CLASS_PALADIN:
@@ -871,6 +900,20 @@ void PartyBotAI::UpdateInCombatAI()
                 }
             }
         }
+    }
+
+    // Use potions
+    if (m_potionSpell &&
+        (me->GetHealthPercent() <= 50.0f ||
+            (me->GetPowerType() == POWER_MANA &&
+            me->GetPowerPercent(POWER_MANA) <= 50.0f)))
+    {
+        if (CanTryToCastSpell(me, m_potionSpell))
+        {
+            if (DoCastSpell(me, m_potionSpell) == SPELL_CAST_OK)
+                return;
+        }
+
     }
 
     if (pVictim)
@@ -963,6 +1006,18 @@ void PartyBotAI::UpdateOutOfCombatAI_Paladin()
         !me->GetGlobalCooldownMgr().HasGlobalCooldown(m_spells.paladin.pBlessingBuff)))
     {
         m_isBuffing = false;
+    }
+
+    if (m_spells.paladin.pCleanse)
+    {
+        if (Unit* pFriend = SelectDispelTarget(m_spells.paladin.pCleanse))
+        {
+            if (CanTryToCastSpell(pFriend, m_spells.paladin.pCleanse))
+            {
+                if (DoCastSpell(pFriend, m_spells.paladin.pCleanse) == SPELL_CAST_OK)
+                    return;
+            }
+        }
     }
 
     if (m_role == ROLE_HEALER &&
@@ -1626,6 +1681,19 @@ void PartyBotAI::UpdateOutOfCombatAI_Mage()
     {
         m_isBuffing = false;
     }
+
+    // Decurse
+    if (m_spells.mage.pRemoveLesserCurse)
+    {
+        if (Unit* pFriend = SelectDispelTarget(m_spells.mage.pRemoveLesserCurse))
+        {
+            if (CanTryToCastSpell(pFriend, m_spells.mage.pRemoveLesserCurse))
+            {
+                if (DoCastSpell(pFriend, m_spells.mage.pRemoveLesserCurse) == SPELL_CAST_OK)
+                    return;
+            }
+        }
+    }
 }
 
 void PartyBotAI::UpdateInCombatAI_Mage()
@@ -1635,6 +1703,19 @@ void PartyBotAI::UpdateInCombatAI_Mage()
         spec = PB_SPEC_MAGE_ARCANE;
     else if (m_spells.mage.pCombustion)
         spec = PB_SPEC_MAGE_FIRE;
+
+    // Decurse - Priority for boss fights
+    if (m_spells.mage.pRemoveLesserCurse)
+    {
+        if (Unit* pFriend = SelectDispelTarget(m_spells.mage.pRemoveLesserCurse))
+        {
+            if (CanTryToCastSpell(pFriend, m_spells.mage.pRemoveLesserCurse))
+            {
+                if (DoCastSpell(pFriend, m_spells.mage.pRemoveLesserCurse) == SPELL_CAST_OK)
+                    return;
+            }
+        }
+    }
 
     if (Unit* pVictim = me->GetVictim())
     {
@@ -1733,14 +1814,6 @@ void PartyBotAI::UpdateInCombatAI_Mage()
             CanTryToCastSpell(pVictim, m_spells.mage.pCounterspell))
         {
             if (DoCastSpell(pVictim, m_spells.mage.pCounterspell) == SPELL_CAST_OK)
-                return;
-        }
-
-        if (m_spells.mage.pRemoveLesserCurse &&
-            CanTryToCastSpell(me, m_spells.mage.pRemoveLesserCurse) &&
-            IsValidDispelTarget(me, m_spells.mage.pRemoveLesserCurse))
-        {
-            if (DoCastSpell(me, m_spells.mage.pRemoveLesserCurse) == SPELL_CAST_OK)
                 return;
         }
 
@@ -1986,6 +2059,31 @@ void PartyBotAI::UpdateOutOfCombatAI_Priest()
         m_isBuffing = false;
     }
 
+    // Dispels
+    if (m_spells.priest.pDispelMagic)
+    {
+        if (Unit* pFriend = SelectDispelTarget(m_spells.priest.pDispelMagic))
+        {
+            if (CanTryToCastSpell(pFriend, m_spells.priest.pDispelMagic))
+            {
+                if (DoCastSpell(pFriend, m_spells.priest.pDispelMagic) == SPELL_CAST_OK)
+                    return;
+            }
+        }
+    }
+
+    if (m_spells.priest.pAbolishDisease)
+    {
+        if (Unit* pFriend = SelectDispelTarget(m_spells.priest.pAbolishDisease))
+        {
+            if (CanTryToCastSpell(pFriend, m_spells.priest.pAbolishDisease))
+            {
+                if (DoCastSpell(pFriend, m_spells.priest.pAbolishDisease) == SPELL_CAST_OK)
+                    return;
+            }
+        }
+    }
+
     if (m_role == ROLE_HEALER &&
         FindAndHealInjuredAlly(100.0f,90.0f))
         return;
@@ -1994,8 +2092,7 @@ void PartyBotAI::UpdateOutOfCombatAI_Priest()
 void PartyBotAI::UpdateInCombatAI_Priest()
 {
 
-    if (!me->GetAttackers().empty() &&
-        m_role != ROLE_TANK)
+    if (!me->GetAttackers().empty())
     {
         if (m_spells.priest.pFade &&
             CanTryToCastSpell(me, m_spells.priest.pFade))
@@ -2018,7 +2115,10 @@ void PartyBotAI::UpdateInCombatAI_Priest()
                 CanTryToCastSpell(pAttacker, m_spells.priest.pShackleUndead))
             {
                 if (DoCastSpell(pAttacker, m_spells.priest.pShackleUndead) == SPELL_CAST_OK)
+                {
+                    RunAwayFromTarget(pAttacker);
                     return;
+                }
             }
         }
 
@@ -2039,6 +2139,31 @@ void PartyBotAI::UpdateInCombatAI_Priest()
         CanTryToCastSpell(me, m_spells.priest.pInnerFocus))
     {
         DoCastSpell(me, m_spells.priest.pInnerFocus);
+    }
+
+    // Dispels
+    if (m_spells.priest.pDispelMagic)
+    {
+        if (Unit* pFriend = SelectDispelTarget(m_spells.priest.pDispelMagic))
+        {
+            if (CanTryToCastSpell(pFriend, m_spells.priest.pDispelMagic))
+            {
+                if (DoCastSpell(pFriend, m_spells.priest.pDispelMagic) == SPELL_CAST_OK)
+                    return;
+            }
+        }
+    }
+
+    if (m_spells.priest.pAbolishDisease)
+    {
+        if (Unit* pFriend = SelectDispelTarget(m_spells.priest.pAbolishDisease))
+        {
+            if (CanTryToCastSpell(pFriend, m_spells.priest.pAbolishDisease))
+            {
+                if (DoCastSpell(pFriend, m_spells.priest.pAbolishDisease) == SPELL_CAST_OK)
+                    return;
+            }
+        }
     }
 
     if (m_role == ROLE_HEALER)
@@ -2074,30 +2199,6 @@ void PartyBotAI::UpdateInCombatAI_Priest()
         if (Unit* pTarget = SelectPeriodicHealTarget(85.0f, 85.0f))
             if (HealInjuredTargetPeriodic(pTarget))
                 return;
-
-        // Dispels
-        if (m_spells.priest.pDispelMagic)
-        {
-            if (Unit* pFriend = SelectDispelTarget(m_spells.priest.pDispelMagic))
-            {
-                if (CanTryToCastSpell(pFriend, m_spells.priest.pDispelMagic))
-                {
-                    if (DoCastSpell(pFriend, m_spells.priest.pDispelMagic) == SPELL_CAST_OK)
-                        return;
-                }
-            }
-        }
-        if (m_spells.priest.pAbolishDisease)
-        {
-            if (Unit* pFriend = SelectDispelTarget(m_spells.priest.pAbolishDisease))
-            {
-                if (CanTryToCastSpell(pFriend, m_spells.priest.pAbolishDisease))
-                {
-                    if (DoCastSpell(pFriend, m_spells.priest.pAbolishDisease) == SPELL_CAST_OK)
-                        return;
-                }
-            }
-        }
     }
     else if (Unit* pVictim = me->GetVictim())
     {
@@ -2222,21 +2323,23 @@ void PartyBotAI::UpdateOutOfCombatAI_Warlock()
         m_isBuffing = false;
     }
 
-    if (!m_spells.warlock.pDemonicSacrifice ||
-        (m_spells.warlock.pDemonicSacrifice &&
-         !me->HasAura(PB_SPELL_TOUCH_OF_SHADOW)))
+    if (!me->HasAura(PB_SPELL_TOUCH_OF_SHADOW))
     {
-        SummonPetIfNeeded();
-
-        if (Pet* pPet = me->GetPet())
+        if (m_spells.warlock.pDemonicSacrifice)
         {
-            if (pPet->IsAlive() &&
-                CanTryToCastSpell(pPet, m_spells.warlock.pDemonicSacrifice))
+            if (Pet* pPet = me->GetPet())
             {
-                if (DoCastSpell(pPet, m_spells.warlock.pDemonicSacrifice) == SPELL_CAST_OK)
-                    return;
+                if (pPet->IsAlive() &&
+                    CanTryToCastSpell(pPet, m_spells.warlock.pDemonicSacrifice))
+                {
+                    if (DoCastSpell(pPet, m_spells.warlock.pDemonicSacrifice) == SPELL_CAST_OK)
+                        return;
+                }
             }
         }
+
+        SummonPetIfNeeded();
+        return;
     }
 
 }
@@ -3030,6 +3133,41 @@ bool PartyBotAI::EnterCombatDruidForm()
     return false;
 }
 
+void PartyBotAI::PopulateConsumableSpellData()
+{
+    if (m_level < sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL))
+        return;
+    m_potionSpell = sSpellMgr.GetSpellEntry(PB_SPELL_POT_REJUV);
+
+    switch (m_role)
+    {
+        case ROLE_TANK:
+            m_elixirSpell = sSpellMgr.GetSpellEntry(PB_SPELL_ELX_FORCE);
+            m_flaskSpell = sSpellMgr.GetSpellEntry(PB_SPELL_FLASK_TITAN);
+            break;
+        case ROLE_HEALER:
+            m_elixirSpell = sSpellMgr.GetSpellEntry(PB_SPELL_ELX_MAGEBL);
+            m_flaskSpell = sSpellMgr.GetSpellEntry(PB_SPELL_FLASK_WISDOM);
+            break;
+        case ROLE_MELEE_DPS:
+            m_elixirSpell = sSpellMgr.GetSpellEntry(PB_SPELL_ELX_MOONG);
+            m_flaskSpell = sSpellMgr.GetSpellEntry(PB_SPELL_FLASK_TITAN);
+            break;
+        case ROLE_RANGE_DPS:
+            if (m_class == CLASS_HUNTER)
+            {
+                m_elixirSpell = sSpellMgr.GetSpellEntry(PB_SPELL_ELX_MOONG);
+                m_flaskSpell = sSpellMgr.GetSpellEntry(PB_SPELL_FLASK_TITAN);
+            }
+            else
+            {
+                m_elixirSpell = sSpellMgr.GetSpellEntry(PB_SPELL_ELX_MAGEBL);
+                m_flaskSpell = sSpellMgr.GetSpellEntry(PB_SPELL_FLASK_SPOWER);
+            }
+            break;
+    }
+}
+
 void PartyBotAI::UpdateOutOfCombatAI_Druid()
 {
     if (m_spells.druid.pGiftoftheWild)
@@ -3103,6 +3241,34 @@ void PartyBotAI::UpdateOutOfCombatAI_Druid()
         m_isBuffing = false;
     }
 
+    // Dispels
+    SpellEntry const* pDispelSpell = m_spells.druid.pAbolishPoison ?
+        m_spells.druid.pAbolishPoison :
+        m_spells.druid.pCurePoison;
+    if (pDispelSpell)
+    {
+        if (Unit* pFriend = SelectDispelTarget(pDispelSpell))
+        {
+            if (CanTryToCastSpell(pFriend, pDispelSpell))
+            {
+                if (DoCastSpell(pFriend, pDispelSpell) == SPELL_CAST_OK)
+                    return;
+            }
+        }
+    }
+
+    if (m_spells.druid.pRemoveCurse)
+    {
+        if (Unit* pFriend = SelectDispelTarget(m_spells.druid.pRemoveCurse))
+        {
+            if (CanTryToCastSpell(pFriend, m_spells.druid.pRemoveCurse))
+            {
+                if (DoCastSpell(pFriend, m_spells.druid.pRemoveCurse) == SPELL_CAST_OK)
+                    return;
+            }
+        }
+    }
+
     if (me->GetShapeshiftForm() == FORM_NONE)
     {
         if (EnterCombatDruidForm())
@@ -3135,6 +3301,34 @@ void PartyBotAI::UpdateInCombatAI_Druid()
     {
         if (DoCastSpell(me, m_spells.druid.pBarkskin) == SPELL_CAST_OK)
             return;
+    }
+
+    // Dispels
+    SpellEntry const* pDispelSpell = m_spells.druid.pAbolishPoison ?
+        m_spells.druid.pAbolishPoison :
+        m_spells.druid.pCurePoison;
+    if (pDispelSpell)
+    {
+        if (Unit* pFriend = SelectDispelTarget(pDispelSpell))
+        {
+            if (CanTryToCastSpell(pFriend, pDispelSpell))
+            {
+                if (DoCastSpell(pFriend, pDispelSpell) == SPELL_CAST_OK)
+                    return;
+            }
+        }
+    }
+
+    if (m_spells.druid.pRemoveCurse)
+    {
+        if (Unit* pFriend = SelectDispelTarget(m_spells.druid.pRemoveCurse))
+        {
+            if (CanTryToCastSpell(pFriend, m_spells.druid.pRemoveCurse))
+            {
+                if (DoCastSpell(pFriend, m_spells.druid.pRemoveCurse) == SPELL_CAST_OK)
+                    return;
+            }
+        }
     }
 
     if (m_role == ROLE_HEALER)
@@ -3194,22 +3388,6 @@ void PartyBotAI::UpdateInCombatAI_Druid()
             {
                 if (DoCastSpell(pAttacker, m_spells.druid.pHibernate) == SPELL_CAST_OK)
                     return;
-            }
-        }
-
-        // Dispels
-        SpellEntry const* pDispelSpell = m_spells.druid.pAbolishPoison ?
-                                         m_spells.druid.pAbolishPoison :
-                                         m_spells.druid.pCurePoison;
-        if (pDispelSpell)
-        {
-            if (Unit* pFriend = SelectDispelTarget(pDispelSpell))
-            {
-                if (CanTryToCastSpell(pFriend, pDispelSpell))
-                {
-                    if (DoCastSpell(pFriend, pDispelSpell) == SPELL_CAST_OK)
-                        return;
-                }
             }
         }
 

@@ -485,6 +485,7 @@ public:
             SpellEntry const* pSwiftmend;
             SpellEntry const* pOmenOfClarity;
             SpellEntry const* pTranquility;
+            SpellEntry const* pRemoveCurse;
             // Cat
             SpellEntry const* pProwl;
             SpellEntry const* pPounce;

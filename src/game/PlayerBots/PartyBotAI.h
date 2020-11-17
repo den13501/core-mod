@@ -48,6 +48,7 @@ public:
     void RunAwayFromTarget(Unit* pTarget);
     void MoveToTarget(Unit* pTarget);
     bool EnterCombatDruidForm();
+    void PopulateConsumableSpellData();
 
     void UpdateInCombatAI() final;
     void UpdateOutOfCombatAI() final;
@@ -74,6 +75,9 @@ public:
     ShortTimeTracker m_updateTimer;
     ObjectGuid m_leaderGuid;
     ObjectGuid m_cloneGuid;
+    SpellEntry const* m_potionSpell = nullptr;
+    SpellEntry const* m_elixirSpell = nullptr;
+    SpellEntry const* m_flaskSpell = nullptr;
     uint8 m_race = 0;
     uint8 m_class = 0;
     uint8 m_level = 0;
