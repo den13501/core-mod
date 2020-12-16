@@ -3437,6 +3437,10 @@ SpellCastResult Creature::TryToCast(Unit* pTarget, SpellEntry const* pSpellInfo,
     if (GetMotionMaster()->GetCurrentMovementGeneratorType() == TIMED_FLEEING_MOTION_TYPE)
         return SPELL_FAILED_FLEEING;
 
+    // This spell is only used to interrupt enemy spell cast.
+    if ((uiCastFlags & CF_TARGET_CASTING) && !pTarget->IsNonMeleeSpellCasted())
+        return SPELL_FAILED_UNKNOWN;
+
     // This spell is only used when target is in melee range.
     if ((uiCastFlags & CF_ONLY_IN_MELEE) && !CanReachWithMeleeAutoAttack(pTarget))
         return SPELL_FAILED_OUT_OF_RANGE;
