@@ -448,7 +448,7 @@ void Pet::SavePetToDB(PetSaveMode mode)
         return;
 
     // Do not save bot pets.
-    if (pOwner->GetSession()->GetBot())
+    if (pOwner->IsBot())
         return;
 
     // current/stable/not_in_slot

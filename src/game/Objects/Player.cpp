@@ -4922,7 +4922,7 @@ Corpse* Player::CreateCorpse()
 
     // we not need saved corpses for BG/arenas
     if (!GetMap()->IsBattleGround() &&
-        !GetSession()->GetBot())
+        !IsBot())
         corpse->SaveToDB();
 
     // register for player, but not show
@@ -14719,7 +14719,7 @@ bool Player::LoadFromDB(ObjectGuid guid, SqlQueryHolder* holder)
 
     // check if the character's account in the db and the logged in account match.
     // player should be able to load/delete character only with correct account!
-    if (!GetSession()->GetBot() && dbAccountId != GetSession()->GetAccountId())
+    if (!IsBot() && dbAccountId != GetSession()->GetAccountId())
     {
         sLog.outError("%s loading from wrong account (is: %u, should be: %u)",
                       guid.GetString().c_str(), GetSession()->GetAccountId(), dbAccountId);
@@ -16239,7 +16239,7 @@ void Player::SaveToDB(bool online, bool force)
     m_nextSave = sWorld.getConfig(CONFIG_UINT32_INTERVAL_SAVE);
 
     // Do not save bots
-    if (GetSession()->GetBot())
+    if (IsBot())
         return;
     if (m_DbSaveDisabled)
         return;
