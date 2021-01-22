@@ -1870,7 +1870,7 @@ void Creature::SetDeathState(DeathState s)
         }
 
         // return, since we promote to CORPSE_FALLING. CORPSE_FALLING is promoted to CORPSE at next update.
-        if (CanFly() && FallGround())
+        if (!HasCreatureState(CSTATE_DESPAWNING) && CanFly() && FallGround())
             return;
 
         Unit::SetDeathState(CORPSE);
@@ -1965,6 +1965,8 @@ void Creature::Respawn()
 
 void Creature::ForcedDespawn(uint32 timeMSToDespawn)
 {
+    AddCreatureState(CSTATE_DESPAWNING);
+
     if (timeMSToDespawn)
     {
         ForcedDespawnDelayEvent *pEvent = new ForcedDespawnDelayEvent(*this);
@@ -1978,6 +1980,7 @@ void Creature::ForcedDespawn(uint32 timeMSToDespawn)
 
     RemoveCorpse();
     SetHealth(0);                                           // just for nice GM-mode view
+    ClearCreatureState(CSTATE_DESPAWNING);
 }
 
 bool Creature::IsImmuneToSpell(SpellEntry const* spellInfo, bool castOnSelf) const
