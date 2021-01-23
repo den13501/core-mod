@@ -10924,7 +10924,7 @@ void ObjectMgr::LoadPlayerPremadeTemplates()
                     continue;;
             }
 
-            if (!(level >= 1 && level <= PLAYER_MAX_LEVEL))
+            if (!(level >= 1 && level <= PLAYER_STRONG_MAX_LEVEL))
             {
                 sLog.outErrorDb("Wrong level %hhu for entry %u in table `player_premade_template`", level, entry);
                 continue;
@@ -11153,6 +11153,16 @@ void ObjectMgr::ApplyPremadeGearTemplateToPlayer(uint32 entry, Player* pPlayer) 
                 if (FactionEntry const* pFaction = GetFactionEntry(pItem->RequiredReputationFaction))
                     if (pPlayer->GetReputationMgr().GetRank(pFaction) < pItem->RequiredReputationRank)
                         pPlayer->GetReputationMgr().SetReputation(pFaction, pPlayer->GetReputationMgr().GetRepPointsToRank(ReputationRank(pItem->RequiredReputationRank)));
+
+            // Set required honor rank
+            if (pItem->RequiredHonorRank)
+            {
+                if (pPlayer->GetHonorMgr().GetRank().rank < pItem->RequiredHonorRank)
+                {
+                    pPlayer->GetHonorMgr().SetRankPoints(60000.0f);
+                    pPlayer->GetHonorMgr().Update();
+                }
+            }
 
             // Learn required profession
             if (pItem->RequiredSkill && (!pPlayer->HasSkill(pItem->RequiredSkill) || (pPlayer->GetSkill(pItem->RequiredSkill, false, false) <  pItem->RequiredSkillRank)))

@@ -425,6 +425,90 @@ bool PlayerBotMgr::DeleteBot(std::map<uint32, PlayerBotEntry*>::iterator iter)
     return true;
 }
 
+bool PlayerBotMgr::AddPartyBot(Player* pPlayer, std::string option, uint32 forceLevel)
+{
+    if (!pPlayer)
+        return false;
+
+    uint8 botClass = 0;
+    uint32 botLevel = 0;
+
+    if (forceLevel)
+        botLevel = forceLevel;
+    else
+        botLevel = pPlayer->GetLevel() >= sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL) ? pPlayer->GetLevel() + urand(0, 1) : pPlayer->GetLevel() + urand(-1, 1);
+
+    botLevel = botLevel < 1 ? 1 : botLevel;
+
+    CombatBotRoles botRole = ROLE_INVALID;
+
+    if (option == "warrior")
+        botClass = CLASS_WARRIOR;
+    else if (option == "paladin" && pPlayer->GetTeam() == ALLIANCE)
+        botClass = CLASS_PALADIN;
+    else if (option == "hunter")
+        botClass = CLASS_HUNTER;
+    else if (option == "rogue")
+        botClass = CLASS_ROGUE;
+    else if (option == "priest")
+        botClass = CLASS_PRIEST;
+    else if (option == "shaman" && pPlayer->GetTeam() == HORDE)
+        botClass = CLASS_SHAMAN;
+    else if (option == "mage")
+        botClass = CLASS_MAGE;
+    else if (option == "warlock")
+        botClass = CLASS_WARLOCK;
+    else if (option == "druid")
+        botClass = CLASS_DRUID;
+    else if (option == "dps")
+    {
+        std::vector<uint32> dpsClasses = { CLASS_WARRIOR, CLASS_HUNTER, CLASS_ROGUE, CLASS_PRIEST, CLASS_MAGE, CLASS_WARLOCK, CLASS_DRUID };
+        if (pPlayer->GetTeam() == HORDE)
+            dpsClasses.push_back(CLASS_SHAMAN);
+        else
+            dpsClasses.push_back(CLASS_PALADIN);
+        botClass = SelectRandomContainerElement(dpsClasses);
+    }
+    else if (option == "healer")
+    {
+        std::vector<uint32> healerClasses = { CLASS_PRIEST, CLASS_DRUID };
+
+        /*if (pPlayer->GetTeam() == HORDE)
+            healerClasses.push_back(CLASS_SHAMAN);
+        if (pPlayer->GetTeam() == ALLIANCE)
+            healerClasses.push_back(CLASS_PALADIN);*/
+
+        botClass = SelectRandomContainerElement(healerClasses);
+        botRole = ROLE_HEALER;
+    }
+    else if (option == "tank")
+    {
+        std::vector<uint32> tankClasses = { CLASS_WARRIOR };
+
+        /*if (pPlayer->GetTeam() == ALLIANCE)
+            tankClasses.push_back(CLASS_PALADIN);*/
+
+        botClass = SelectRandomContainerElement(tankClasses);
+        botRole = ROLE_TANK;
+    }
+
+    if (botRole == ROLE_INVALID)
+    {
+        if (botClass == CLASS_DRUID && botLevel >= 60)
+            botRole == urand(0, 1) ? ROLE_MELEE_DPS : ROLE_RANGE_DPS;
+        else
+            botRole = CombatBotBaseAI::IsMeleeWeaponClass(botClass) ? ROLE_MELEE_DPS : ROLE_RANGE_DPS;
+    }
+
+    uint8 botRace = sPlayerBotMgr.SelectRandomRaceForClass(botClass, pPlayer->GetTeam());
+
+    float x, y, z;
+    pPlayer->GetNearPoint(pPlayer, x, y, z, 0, 5.0f, frand(0.0f, 6.0f));
+
+    PartyBotAI* ai = new PartyBotAI(pPlayer, nullptr, botRole, botRace, botClass, botLevel, pPlayer->GetMapId(), pPlayer->GetMap()->GetInstanceId(), x, y, z, pPlayer->GetOrientation());
+    AddBot(ai);
+}
+
 bool PlayerBotMgr::DeleteRandomBot()
 {
     if (m_stats.onlineCount < 1)
@@ -588,7 +672,7 @@ bool ChatHandler::HandleBotStartCommand(char * args)
     return true;
 }
 
-uint8 SelectRandomRaceForClass(uint8 playerClass, Team playerTeam)
+uint8 PlayerBotMgr::SelectRandomRaceForClass(uint8 playerClass, Team playerTeam)
 {
     switch (playerClass)
     {
@@ -747,16 +831,6 @@ bool ChatHandler::HandlePartyBotAddCommand(char* args)
     if (!pPlayer)
         return false;
 
-    // Only allow to add member when resting
-    /*if (!pPlayer->HasFlag(PLAYER_FLAGS, PLAYER_FLAGS_RESTING))
-        return false;*/
-
-    if (!PartyBotAddRequirementCheck(pPlayer, nullptr))
-    {
-        SetSentErrorMessage(true);
-        return false;
-    }
-
     if (!args)
     {
         SendSysMessage("Incorrect syntax. Expected role or class.");
@@ -764,92 +838,28 @@ bool ChatHandler::HandlePartyBotAddCommand(char* args)
         return false;
     }
 
-    uint8 botClass = 0;
-    uint32 botLevel = pPlayer->GetLevel() >= sWorld.getConfig(CONFIG_UINT32_MAX_PLAYER_LEVEL) ? pPlayer->GetLevel() : pPlayer->GetLevel() + urand(-1,1);
-    CombatBotRoles botRole = ROLE_INVALID;
-
-    if (char* arg1 = ExtractArg(&args))
+    if (!PartyBotAddRequirementCheck(pPlayer, nullptr))
     {
-        std::string option = arg1;
-        if (option == "warrior")
-            botClass = CLASS_WARRIOR;
-        else if (option == "paladin" && pPlayer->GetTeam() == ALLIANCE)
-            botClass = CLASS_PALADIN;
-        else if (option == "hunter")
-            botClass = CLASS_HUNTER;
-        else if (option == "rogue")
-            botClass = CLASS_ROGUE;
-        else if (option == "priest")
-            botClass = CLASS_PRIEST;
-        else if (option == "shaman" && pPlayer->GetTeam() == HORDE)
-            botClass = CLASS_SHAMAN;
-        else if (option == "mage")
-            botClass = CLASS_MAGE;
-        else if (option == "warlock")
-            botClass = CLASS_WARLOCK;
-        else if (option == "druid")
-            botClass = CLASS_DRUID;
-        else if (option == "dps")
-        {
-            std::vector<uint32> dpsClasses = { CLASS_WARRIOR, CLASS_HUNTER, CLASS_ROGUE, CLASS_PRIEST, CLASS_MAGE, CLASS_WARLOCK, CLASS_DRUID };
-            if (pPlayer->GetTeam() == HORDE)
-                dpsClasses.push_back(CLASS_SHAMAN);
-            else
-                dpsClasses.push_back(CLASS_PALADIN);
-            botClass = SelectRandomContainerElement(dpsClasses);
-        }
-        else if (option == "healer")
-        {
-            std::vector<uint32> healerClasses = { CLASS_PRIEST, CLASS_DRUID };
-
-            /*if (pPlayer->GetTeam() == HORDE)
-                healerClasses.push_back(CLASS_SHAMAN);
-            if (pPlayer->GetTeam() == ALLIANCE)
-                healerClasses.push_back(CLASS_PALADIN);*/
-
-            botClass = SelectRandomContainerElement(healerClasses);
-            botRole = ROLE_HEALER;
-        }
-        else if (option == "tank")
-        {
-            std::vector<uint32> tankClasses = { CLASS_WARRIOR };
-            
-            /*if (pPlayer->GetTeam() == ALLIANCE)
-                tankClasses.push_back(CLASS_PALADIN);*/
-
-            botClass = SelectRandomContainerElement(tankClasses);
-            botRole = ROLE_TANK;
-        }
-
-        ExtractUInt32(&args, botLevel);
-    }
-    
-    if (!botClass)
-    {
-        SendSysMessage("Incorrect syntax. Expected role or class.");
         SetSentErrorMessage(true);
         return false;
     }
-    
-    if (botRole == ROLE_INVALID)
+
+    uint32 botLevel = 0;
+    ExtractUInt32(&args, botLevel);
+
+    std::string option = "dps";
+
+    if (char* arg1 = ExtractArg(&args))
     {
-        if (botClass == CLASS_DRUID)
-            botRole == urand(0, 1) ? ROLE_MELEE_DPS : ROLE_RANGE_DPS;
-        else
-            botRole = CombatBotBaseAI::IsMeleeWeaponClass(botClass) ? ROLE_MELEE_DPS : ROLE_RANGE_DPS;
+        option = arg1;
     }
 
-    uint8 botRace = SelectRandomRaceForClass(botClass, pPlayer->GetTeam());
-
-    float x, y, z;
-    pPlayer->GetNearPoint(pPlayer, x, y, z, 0, 5.0f, frand(0.0f, 6.0f));
-
-    PartyBotAI* ai = new PartyBotAI(pPlayer, nullptr, botRole, botRace, botClass, botLevel, pPlayer->GetMapId(), pPlayer->GetMap()->GetInstanceId(), x, y, z, pPlayer->GetOrientation());
-    sPlayerBotMgr.AddBot(ai);
-    
-    SendSysMessage("New party bot added.");
-
-    return true;
+    if (sPlayerBotMgr.AddPartyBot(pPlayer, option, botLevel))
+    {
+        SendSysMessage("New party bot added.");
+        return true;
+    }
+    return false;
 }
 
 bool ChatHandler::HandlePartyBotCloneCommand(char* args)
@@ -1402,7 +1412,7 @@ bool ChatHandler::HandleBattleBotAddCommand(char* args, uint8 bg)
     else
         dpsClasses.push_back(CLASS_PALADIN);
     uint8 botClass = SelectRandomContainerElement(dpsClasses);
-    uint8 botRace = SelectRandomRaceForClass(botClass, botTeam);
+    uint8 botRace = sPlayerBotMgr.SelectRandomRaceForClass(botClass, botTeam);
 
     // Spawn bot on GM Island
     BattleBotAI* ai = new BattleBotAI(botRace, botClass, botLevel, 1, 0, 16224.356f, 16284.763f, 13.175f, 4.56f, bg);

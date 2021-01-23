@@ -309,12 +309,12 @@ bool QuestAccept_npc_prospector_remtravel(Player* pPlayer, Creature* pCreature, 
 {
     if (pQuest->GetQuestId() == QUEST_ABSENT_MINDED_PT2)
     {
-        pCreature->SetFactionTemplateId(FACTION_ESCORT_A_NEUTRAL_PASSIVE);
 
         if (npc_prospector_remtravelAI* pEscortAI = dynamic_cast<npc_prospector_remtravelAI*>(pCreature->AI()))
         {
             DoScriptText(SAY_REM_START, pCreature, pPlayer);
             pCreature->HandleEmoteCommand(EMOTE_ONESHOT_QUESTION);
+            pCreature->SetFactionTemporary(57, TEMPFACTION_RESTORE_RESPAWN);
             pEscortAI->Start(false, pPlayer->GetGUID(), pQuest, true);
         }
     }

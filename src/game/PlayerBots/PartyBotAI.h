@@ -3,6 +3,55 @@
 
 #include "CombatBotBaseAI.h"
 
+enum PartyBotSpells
+{
+    PB_SPELL_FOOD = 1131,
+    PB_SPELL_DRINK = 1137,
+    PB_SPELL_DRINK_50 = 25696,
+    PB_SPELL_AUTO_SHOT = 75,
+    PB_SPELL_SHOOT_WAND = 5019,
+    PB_SPELL_HONORLESS_TARGET = 2479,
+    PB_SPELL_POT_REJUV = 22729,
+    PB_SPELL_POT_RESTO = 11359,
+    PB_SPELL_POT_HEAL_3 = 858,
+    PB_SPELL_POT_HEAL_12 = 929,
+    PB_SPELL_POT_HEAL_21 = 1710,
+    PB_SPELL_POT_HEAL_35 = 3928,
+    PB_SPELL_POT_HEAL_45 = 13446,
+    PB_SPELL_ELX_MAGEBL = 24363,
+    PB_SPELL_ELX_MOONG = 17538,
+    PB_SPELL_ELX_FORCE = 17537,
+    PB_SPELL_FLASK_TITAN = 17626,
+    PB_SPELL_FLASK_SPOWER = 17628,
+    PB_SPELL_FLASK_WISDOM = 17627,
+
+
+    PB_SPELL_MOUNT_40_HUMAN = 470,
+    PB_SPELL_MOUNT_40_NELF = 10787,
+    PB_SPELL_MOUNT_40_DWARF = 6896,
+    PB_SPELL_MOUNT_40_GNOME = 17456,
+    PB_SPELL_MOUNT_40_TROLL = 10795,
+    PB_SPELL_MOUNT_40_ORC = 581,
+    PB_SPELL_MOUNT_40_TAUREN = 18363,
+    PB_SPELL_MOUNT_40_UNDEAD = 8980,
+    PB_SPELL_MOUNT_60_HUMAN = 22717,
+    PB_SPELL_MOUNT_60_NELF = 22723,
+    PB_SPELL_MOUNT_60_DWARF = 22720,
+    PB_SPELL_MOUNT_60_GNOME = 22719,
+    PB_SPELL_MOUNT_60_TROLL = 22721,
+    PB_SPELL_MOUNT_60_ORC = 22724,
+    PB_SPELL_MOUNT_60_TAUREN = 22718,
+    PB_SPELL_MOUNT_60_UNDEAD = 22722,
+    PB_SPELL_MOUNT_40_PALADIN = 13819,
+    PB_SPELL_MOUNT_60_PALADIN = 23214,
+    PB_SPELL_MOUNT_40_WARLOCK = 5784,
+    PB_SPELL_MOUNT_60_WARLOCK = 23161,
+
+    PB_SPELL_SHIELD_SLAM = 23922,
+    PB_SPELL_HOLY_SHIELD = 20925,
+    PB_SPELL_TOUCH_OF_SHADOW = 18791,
+};
+
 struct LootResponseData
 {
     LootResponseData(uint64 guid_, uint32 slot_) : guid(guid_), slot(slot_) {}
@@ -41,14 +90,19 @@ public:
     bool AttackStart(Unit* pVictim);
     Unit* SelectAttackTarget(Player* pLeader) const;
     Unit* SelectPartyAttackTarget() const;
+    Unit* SelectSpellTargetDifferentFrom(SpellEntry const* pSpellEntry, Unit* pVictim, float distance = 10.0f) const;
     Player* SelectResurrectionTarget() const;
     Player* SelectShieldTarget() const;
     bool DrinkAndEat();
     bool ShouldAutoRevive() const;
     void RunAwayFromTarget(Unit* pTarget);
-    void MoveToTarget(Unit* pTarget);
+    void RunAwayFromObject(GameObject* pObject, float distance = 10.0f, Unit* pTarget =  nullptr);
+    void RunAwayFromAOE(float distance);
+    void MoveToTarget(Unit* pTarget, float distance = 1.0f);
+    void ChaseTarget(Unit* pTarget);
     bool EnterCombatDruidForm();
     void PopulateConsumableSpellData();
+    bool CheckBossMechanics();
 
     void UpdateInCombatAI() final;
     void UpdateOutOfCombatAI() final;
@@ -75,15 +129,19 @@ public:
     ShortTimeTracker m_updateTimer;
     ObjectGuid m_leaderGuid;
     ObjectGuid m_cloneGuid;
+    ObjectGuid m_distObjGuid;
     SpellEntry const* m_potionSpell = nullptr;
     SpellEntry const* m_elixirSpell = nullptr;
     SpellEntry const* m_flaskSpell = nullptr;
+    SpellEntry const* m_restPotion = nullptr;
     uint8 m_race = 0;
     uint8 m_class = 0;
     uint8 m_level = 0;
     uint32 m_mapId = 0;
     uint32 m_instanceId = 0;
     uint32 m_ressTimer = 0;
+    uint32 m_aoeSpellTimer = 0;
+    uint32 m_spellTimer1 = 0;
     float m_x = 0.0f;
     float m_y = 0.0f;
     float m_z = 0.0f;

@@ -3,6 +3,56 @@
 
 #include "PlayerBotAI.h"
 
+enum CombatBotSpells
+{
+    SPELL_SHIELD_SLAM = 23922,
+    SPELL_HOLY_SHIELD = 20925,
+    SPELL_SANCTITY_AURA = 20218,
+    SPELL_SHADOWFORM = 15473,
+    SPELL_ELEMENTAL_MASTERY = 16166,
+    SPELL_STORMSTRIKE = 17364,
+    SPELL_MOONKIN_FORM = 24858,
+    SPELL_LEADER_OF_THE_PACK = 17007,
+    SPELL_CHALLENGING_SHOUT = 1161,
+
+    SPELL_SUMMON_IMP = 688,
+    SPELL_SUMMON_VOIDWALKER = 697,
+    SPELL_SUMMON_FELHUNTER = 691,
+    SPELL_SUMMON_SUCCUBUS = 712,
+    SPELL_TAME_BEAST = 13481,
+    SPELL_PET_REVIVE = 982,
+
+    SPELL_DEADLY_POISON = 2823,
+    SPELL_INSTANT_POISON = 8679,
+    SPELL_CRIPPLING_POISON = 3408,
+    SPELL_WOUND_POISON = 13219,
+    SPELL_MIND_NUMBING_POISON = 5761,
+
+    PET_WOLF = 565,
+    PET_CAT = 681,
+    PET_BEAR = 822,
+    PET_CRAB = 831,
+    PET_GORILLA = 1108,
+    PET_BIRD = 1109,
+    PET_BOAR = 1190,
+    PET_BAT = 1554,
+    PET_CROC = 1693,
+    PET_SPIDER = 1781,
+    PET_OWL = 1997,
+    PET_STRIDER = 2322,
+    PET_SCORPID = 3127,
+    PET_SERPENT = 3247,
+    PET_RAPTOR = 3254,
+    PET_TURTLE = 3461,
+    PET_FROSTSABER = 7434,
+    PET_FROSTSABERSTK = 7432,
+    PET_SHARDTOOTH = 7445,
+    PET_HYENA = 4127,
+    PET_HAKKAR = 11357,
+    PET_BROKENTOOTH = 2850,
+    PET_BLOODAXEWORG = 9696,
+};
+
 struct HealSpellCompare
 {
     bool operator() (SpellEntry const* const lhs, SpellEntry const* const rhs) const
@@ -91,8 +141,7 @@ public:
     uint8 GetAttackersInRangeCount(float range) const;
     uint8 GetAlliesNeedingHealCount(float range, float healthPercent) const;
     Unit* SelectAttackerDifferentFrom(Unit const* pExcept) const;
-    Unit* SelectHealTarget(float selfHealPercent = 100.0f, float groupHealPercent = 100.0f) const;
-    Unit* SelectPeriodicHealTarget(float selfHealPercent = 100.0f, float groupHealPercent = 100.0f) const;
+    Unit* SelectHealTarget(float healthPercent = 100.0f, bool periodic = false) const;
     Player* SelectBuffTarget(SpellEntry const* pSpellEntry) const;
     Player* SelectBuffTarget(SpellEntry const* pSpellEntryMeele, SpellEntry const* pSpellEntryRanged) const;
     Player* SelectDispelTarget(SpellEntry const* pSpellEntry) const;
@@ -100,8 +149,7 @@ public:
     bool IsValidHealTarget(Unit const* pTarget, float healthPercent = 100.0f) const;
     bool IsValidHostileTarget(Unit const* pTarget) const;
     bool IsValidDispelTarget(Unit const* pTarget, SpellEntry const* pSpellEntry) const;
-    bool FindAndHealInjuredAlly(float selfHealPercent = 100.0f, float groupHealPercent = 100.0f);
-    bool HealInjuredTarget(Unit* pTarget);
+    bool FindAndHealInjuredAlly(float minimumHealthPercent = 100.0f, float criticalHealthPercent = 50.0f);
     bool HealInjuredTargetDirect(Unit* pTarget);
     bool HealInjuredTargetPeriodic(Unit* pTarget);
     template <class T>
@@ -109,6 +157,7 @@ public:
 
     SpellCastResult DoCastSpell(Unit* pTarget, SpellEntry const* pSpellEntry);
     bool CanTryToCastSpell(Unit const* pTarget, SpellEntry const* pSpellEntry, uint32 maxStack = 1) const;
+    bool IsSpellReady(SpellEntry const* pSpellEntry) const;
     bool IsWearingShield() const;
     bool IsDualWielding() const;
 
@@ -279,6 +328,7 @@ public:
             SpellEntry const* pAspectOfTheMonkey;
             SpellEntry const* pAspectOfTheHawk;
             SpellEntry const* pSerpentSting;
+            SpellEntry const* pViperSting;
             SpellEntry const* pArcaneShot;
             SpellEntry const* pAimedShot;
             SpellEntry const* pMultiShot;
@@ -299,6 +349,9 @@ public:
             SpellEntry const* pCounterattack;
             SpellEntry const* pIntimidation;
             SpellEntry const* pBestialWrath;
+            SpellEntry const* pTranquilizingShot;
+            SpellEntry const* pRapidFire;
+            SpellEntry const* pTrueshotAura;
         } hunter;
         struct
         {
@@ -328,10 +381,16 @@ public:
             SpellEntry const* pCombustion;
             SpellEntry const* pFlamestrike;
             SpellEntry const* pArcaneMissiles;
+            SpellEntry const* pImprovedArcaneExplosion;
+            SpellEntry const* pImprovedFlamestrike;
+            SpellEntry const* pImprovedFireball;
+            SpellEntry const* pImprovedScorch;
+            SpellEntry const* pImprovedArcaneMissiles;
         } mage;
         struct
         {
             SpellEntry const* pPowerWordFortitude;
+            SpellEntry const* pSmite;
             SpellEntry const* pDivineSpirit;
             SpellEntry const* pPrayerofSpirit;
             SpellEntry const* pPrayerofFortitude;
@@ -360,6 +419,7 @@ public:
         struct
         {
             SpellEntry const* pDemonArmor;
+            SpellEntry const* pDemonSkin;
             SpellEntry const* pDeathCoil;
             SpellEntry const* pDetectInvisibility;
             SpellEntry const* pShadowWard;
@@ -450,6 +510,7 @@ public:
             SpellEntry const* pVanish;
             SpellEntry const* pBlind;
             SpellEntry const* pPreparation;
+            SpellEntry const* pSap;
             SpellEntry const* pEvasion;
             SpellEntry const* pRiposte;
             SpellEntry const* pKick;
@@ -486,6 +547,7 @@ public:
             SpellEntry const* pOmenOfClarity;
             SpellEntry const* pTranquility;
             SpellEntry const* pRemoveCurse;
+            SpellEntry const* pFuror;
             // Cat
             SpellEntry const* pProwl;
             SpellEntry const* pPounce;

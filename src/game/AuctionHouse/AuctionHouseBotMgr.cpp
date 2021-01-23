@@ -148,7 +148,7 @@ void AuctionHouseBotMgr::AddItem(AuctionHouseBotEntry e, AuctionHouseObject *auc
         return;
     }
 
-    sLog.outInfo("AHBot::AddItem() : Adding item %u.", e.item);
+    //sLog.outInfo("AHBot::AddItem() : Adding item %u.", e.item);
 
     uint32 randomPropertyId = Item::GenerateItemRandomPropertyId(e.item);
     if (randomPropertyId != 0)
@@ -158,7 +158,7 @@ void AuctionHouseBotMgr::AddItem(AuctionHouseBotEntry e, AuctionHouseObject *auc
     switch (etime)
     {
         case 1:
-            etime = urand(7200,28800);
+            etime = urand(7200, 28800);
             break;
         case 2:
         case 3:
