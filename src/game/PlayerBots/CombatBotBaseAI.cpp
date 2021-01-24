@@ -2496,8 +2496,7 @@ Unit* CombatBotBaseAI::SelectHealTarget(float healthPercent, bool periodic) cons
 
 bool CombatBotBaseAI::IsValidHostileTarget(Unit const* pTarget) const
 {
-    return pTarget->IsTargetableForAttack(false, true) &&
-           me->IsValidAttackTarget(pTarget) &&
+    return me->IsValidAttackTarget(pTarget) &&
            pTarget->IsVisibleForOrDetect(me, me, false) &&
            !pTarget->HasUnitState(UNIT_STAT_ISOLATED) &&
            !pTarget->HasBreakableByDamageCrowdControlAura();
