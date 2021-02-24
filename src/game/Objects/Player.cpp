@@ -12497,7 +12497,7 @@ void Player::OnGossipSelect(WorldObject* pSource, uint32 gossipListId)
                 return;
             }
 
-            GetSession()->SendBattlegGroundList(guid, bgTypeId);
+            GetSession()->SendBattleGroundList(guid, bgTypeId);
             break;
         }
         case GOSSIP_OPTION_BOT:
