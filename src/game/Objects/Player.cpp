@@ -17000,8 +17000,6 @@ void Player::SendResetFailedNotify()
 void Player::ResetInstances(InstanceResetMethod method)
 {
     // method can be INSTANCE_RESET_ALL, INSTANCE_RESET_GROUP_JOIN
-
-
     for (BoundInstancesMap::iterator itr = m_boundInstances.begin(); itr != m_boundInstances.end();)
     {
         DungeonPersistentState* state = itr->second.state;
@@ -17016,6 +17014,13 @@ void Player::ResetInstances(InstanceResetMethod method)
         {
             // the "reset all instances" method can only reset normal maps
             if (entry->mapType == MAP_RAID)
+            {
+                ++itr;
+                continue;
+            }
+
+            // solo player cannot reset instance while inside
+            if (IsInWorld() && itr->first == GetMapId())
             {
                 ++itr;
                 continue;
