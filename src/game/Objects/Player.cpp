@@ -2332,7 +2332,6 @@ void Player::AddToWorld()
             m_items[i]->AddToWorld();
     }
     sPlayerBotMgr.OnPlayerInWorld(this);
-    GetCheatData()->InitSpeeds(this);
 }
 
 void Player::RemoveFromWorld()
