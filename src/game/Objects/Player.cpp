@@ -21682,7 +21682,7 @@ void Player::AddGCD(SpellEntry const& spellEntry, uint32 /*forcedDuration = 0*/,
         gcdDuration -= sWorld.GetCurrentDiff() > 200 ? 200 : sWorld.GetCurrentDiff();
     }
 
-    WorldObject::AddGCD(spellEntry, gcdDuration);
+    SpellCaster::AddGCD(spellEntry, gcdDuration);
 
     if (!updateClient)
         return;
@@ -21860,7 +21860,7 @@ void Player::LockOutSpells(SpellSchoolMask schoolMask, uint32 duration)
     GetSession()->SendPacket(&data);
 
     // store lockout
-    WorldObject::LockOutSpells(schoolMask, duration);
+    SpellCaster::LockOutSpells(schoolMask, duration);
 }
 
 void Player::RemoveSpellLockout(SpellSchoolMask spellSchoolMask, std::set<uint32>* spellAlreadySent /*= nullptr*/)
