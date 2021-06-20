@@ -566,7 +566,7 @@ INSERT INTO `creature_movement_template` (`entry`, `point`, `position_x`, `posit
 (3224,3,-2260.51,-306.049,-9.29993,100,0,0,0),
 (3224,4,-2257.75,-312.749,-9.29993,100,5000,5,0),
 (3224,5,-2265.13,-312.055,-9.42604,100,0,0,0),
-(3224,6,-2272.79,-315.722,-9.42604,100,5000,5,0),
+(3224,6,-2272.79,-315.722,-9.42604,100,5,5000,0),
 (3224,7,-2270.73,-308.69,-9.42604,100,0,0,0),
 (3224,8,-2274.7,-300.973,-9.42604,100,5000,5,0),
 (3224,9,-2270.95,-301.636,-9.29993,100,0,0,0),
@@ -1026,7 +1026,7 @@ UPDATE `gossip_menu` SET `condition_id` = 1341 WHERE `entry` = 1341 AND `text_id
 UPDATE `gossip_menu_option` SET `condition_id` = 1341 WHERE `menu_id` = 1341 AND `id` = 0;
 -- Add missing Gossip Menu Option
 INSERT INTO `gossip_menu_option` (`menu_id`, `id`, `option_icon`, `option_text`, `option_broadcast_text`, `option_id`, `npc_option_npcflag`, `action_menu_id`, `action_poi_id`, `action_script_id`, `box_coded`, `box_money`, `box_text`, `box_broadcast_text`, `condition_id`) VALUES
-(1341, 1, 0, 'What\'s an elf like you doing inside a cave like this?', 4471, 1, 1, 1363, 0, 0, 0, 0, NULL, 0, 0);
+(1341, 1, 0, 'What\'s an elf like you doing inside a cave like this?', 4471, 1, 1, 1363, 0, 0, 0, 0, \N, 0, 0);
 -- Add missing Gossip Menu
 INSERT INTO `gossip_menu` (`entry`, `text_id`) VALUES
 (1363, 1996);
