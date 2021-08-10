@@ -1190,6 +1190,9 @@ uint32 Player::GetWaterBreathingInterval() const
 
 void Player::SetWaterBreathingIntervalMultiplier(float multiplier)
 {
+    if (m_environmentBreathingMultiplier == multiplier)
+        return;
+
     m_environmentBreathingMultiplier = multiplier;
 
     if (const uint32 interval = GetWaterBreathingInterval())
