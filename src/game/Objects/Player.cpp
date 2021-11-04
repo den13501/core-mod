@@ -1706,6 +1706,7 @@ void Player::Update(uint32 update_diff, uint32 p_time)
 
     if (IsHasDelayedTeleport())
         TeleportTo(m_teleport_dest, m_teleport_options, m_teleportRecoverDelayed);
+
     // Movement extrapolation & cheat computation - only if not already kicked!
     if (!GetSession()->IsConnected())
         return;
@@ -1718,6 +1719,7 @@ void Player::Update(uint32 update_diff, uint32 p_time)
             if (!transition || !IsInCombat())
                 sMapMgr.ScheduleInstanceSwitch(this, newInstanceId);
     }
+
     if (IsInWorld())
     {
         if (m_repopAtGraveyardPending && !HasPendingMovementChange())
