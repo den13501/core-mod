@@ -1191,6 +1191,7 @@ class Unit : public SpellCaster
 
         CharmInfo* GetCharmInfo() const { return m_charmInfo; }
         CharmInfo* InitCharmInfo(Unit* charm);
+        void HandlePetCommand(CommandStates command, Unit* pTarget);
 
         Unit* GetOwner() const;
         Creature* GetOwnerCreature() const;
