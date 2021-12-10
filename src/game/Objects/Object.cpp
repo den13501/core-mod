@@ -3516,7 +3516,7 @@ bool WorldObject::IsValidAttackTarget(Unit const* target, bool checkAlive) const
     if (FindMap() != target->FindMap())
         return false;
 
-    if (!target->IsTargetable(true, IsCharmerOrOwnerPlayerOrPlayerItself(), false, checkAlive))
+    if (!target->IsTargetableBy(this, false, checkAlive))
         return false;
 
     Unit const* pThisUnit = ToUnit();
