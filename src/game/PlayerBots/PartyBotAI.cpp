@@ -16,8 +16,8 @@
 #define PB_UPDATE_INTERVAL 1000
 #define PB_MIN_FOLLOW_DIST 3.0f
 #define PB_MAX_FOLLOW_DIST 6.0f
-#define PB_MIN_FOLLOW_ANGLE 0.0f
-#define PB_MAX_FOLLOW_ANGLE 6.283f
+#define PB_MIN_FOLLOW_ANGLE 2.0f
+#define PB_MAX_FOLLOW_ANGLE 4.0f
 
 void PartyBotAI::CloneFromPlayer(Player const* pPlayer)
 {
@@ -170,55 +170,35 @@ Player* PartyBotAI::GetPartyLeader() const
     return ObjectAccessor::FindPlayerNotInWorld(m_leaderGuid);
 }
 
-void PartyBotAI::RunAwayFromTarget(Unit* pTarget)
+void PartyBotAI::RunAwayFromTarget(Unit* pTarget, bool pFollowLeader, float pDist)
 {
-    if (Player* pLeader = GetPartyLeader())
+    float minLeadDist = pDist < 20.0f ? 20.0f : pDist;
+
+    if (pFollowLeader)
     {
-        if (pLeader->IsInWorld() &&
-            pLeader->GetMap() == me->GetMap())
+        if (Player* pLeader = GetPartyLeader())
         {
-            float leaderDistance = me->GetDistance(pLeader);
-            float leadToMonsDist = pLeader->GetDistance(pTarget);
-            if (leaderDistance > 15.0f || leadToMonsDist > 15.0f)
+            if (!pLeader->IsDead() &&
+                pLeader->IsInWorld() &&
+                pLeader->GetMap() == me->GetMap())
             {
-                me->GetMotionMaster()->MoveIdle();
-                MoveToTarget(pLeader);
-                return;
+                float leaderDistance = me->GetDistance(pLeader);
+                float leadToMonsDist = pLeader->GetDistance(pTarget);
+                if (leaderDistance > minLeadDist || leadToMonsDist > minLeadDist)
+                {
+                    MoveToTarget(pLeader, 6.0f);
+                    return;
+                }
             }
         }
     }
 
-    me->GetMotionMaster()->MoveDistance(pTarget, 12.0f);
-}
-
-void PartyBotAI::RunAwayFromObject(GameObject* pObject, float distance, Unit* pTarget)
-{
-    if (m_distObjGuid &&
-        m_distObjGuid == pObject->GetObjectGuid() &&
-        me->GetMotionMaster()->GetCurrentMovementGeneratorType() == POINT_MOTION_TYPE)
+    float distance = pDist - me->GetDistance(pTarget) + frand(0.0f,0.5f);
+    if (distance < 0.0f)
         return;
 
+    float angle = me->GetAngle(pTarget) - M_PI_F + frand(-0.5f, 0.5f);
     float x, y, z;
-    float angle = frand(PB_MIN_FOLLOW_ANGLE, PB_MAX_FOLLOW_ANGLE);
-
-    if (pTarget)
-        angle = ((2 * M_PI) - ((me->GetAngle(pTarget) + me->GetAngle(pObject)) / 2));
-        
-    pObject->GetNearPoint(me, x, y, z, 0.0f, distance, angle);
-
-    me->GetMotionMaster()->Clear();
-    me->GetMotionMaster()->MovePoint(0, x, y, z, MOVE_PATHFINDING);
-}
-
-void PartyBotAI::RunAwayFromAOE(float distance)
-{
-    if (me->GetMotionMaster()->GetCurrentMovementGeneratorType() == POINT_MOTION_TYPE)
-        return;
-
-    float x, y, z;
-    float angle = frand(1.0f, 2.0f);
-    if (urand(0, 1))
-        angle *= -1.0f;
 
     me->GetNearPoint(me, x, y, z, 0.0f, distance, angle);
 
@@ -226,29 +206,136 @@ void PartyBotAI::RunAwayFromAOE(float distance)
     me->GetMotionMaster()->MovePoint(0, x, y, z, MOVE_PATHFINDING);
 }
 
+void PartyBotAI::RunAwayFromObject(GameObject* pObject, float pDistance)
+{
 
-void PartyBotAI::MoveToTarget(Unit* pTarget, float distance)
+    std::list<GameObject*> lObjects;
+
+    float x, y, z;
+    float angle;
+    bool directions[6] = { true, true, true, true, true, true };
+    int direction = 0;
+    std::vector<int> freeDirections;
+
+    me->GetGameObjectListWithEntryInGrid(lObjects, pObject->GetEntry(), (pDistance*2));
+    for (const auto& pGo : lObjects)
+    {
+        if (pGo->isSpawned())
+        {
+            float pGoAngle = (me->GetAngle(pGo));
+            int direction = (int)((pGoAngle / 1.05) + 0.5f);
+            switch (direction)
+            {
+                case 0:
+                case 6:
+                    directions[0] = false;
+                case 1:
+                    directions[1] = false;
+                case 2:
+                    directions[2] = false;
+                case 3:
+                    directions[3] = false;
+                case 4:
+                    directions[4] = false;
+                case 5:
+                    directions[5] = false;
+            }
+        }
+    }
+
+    for (int i = 0; i < 6; i++)
+    {
+        if (directions[i])
+        {
+            freeDirections.push_back(i);
+            if (i == 1 || i == 5)
+            {
+                direction = i;
+                freeDirections.clear();
+                break;
+            }
+            
+        }
+    }
+
+    if (!freeDirections.empty())
+    {
+        direction = SelectRandomContainerElement(freeDirections);
+    }
+
+    angle = (direction * 1.05) + frand(-0.1f, 0.1f);
+
+    me->GetNearPoint(me, x, y, z, 0.0f, pDistance, angle);
+
+    if (me->IsMoving())
+        me->StopMoving();
+    me->GetMotionMaster()->Clear();
+    me->GetMotionMaster()->MovePoint(0, x, y, z, MOVE_PATHFINDING);
+}
+
+void PartyBotAI::RunAwayFromAOE(float pDistance)
 {
     float x, y, z;
+    float angle = frand(1.0f, 2.0f);
+    if (urand(0, 1))
+        angle *= -1.0f;
+
+    me->GetNearPoint(me, x, y, z, 0.0f, pDistance, angle);
+
+    me->GetMotionMaster()->Clear();
+    me->GetMotionMaster()->MovePoint(0, x, y, z, MOVE_PATHFINDING);
+}
+
+
+void PartyBotAI::MoveToTarget(Unit* pTarget, float pDistance)
+{
+    float x, y, z;
+    float distance;
     float angle = frand(PB_MIN_FOLLOW_ANGLE, PB_MAX_FOLLOW_ANGLE);
+    if (pDistance > 1.0)
+        distance = frand(0.5f, pDistance);
+    else
+        distance = pDistance;
+
     pTarget->GetNearPoint(me, x, y, z, 0, distance, angle);
 
     me->GetMotionMaster()->Clear();
     me->GetMotionMaster()->MovePoint(0,x,y,z,MOVE_PATHFINDING);
 }
 
+void PartyBotAI::MoveToTargetDistance(Unit* pTarget, float pDistance)
+{
+    float x, y, z;
+    float angle = me->GetAngle(pTarget);
+    float distance = me->GetDistance(pTarget) - pDistance + frand(-0.25f, 0.25f);
+
+    if (distance < 0.0f)
+    {
+        angle += M_PI_F;
+        distance *= -1.0f;
+    }
+
+    me->GetNearPoint(me, x, y, z, 0, distance, angle);
+
+    me->GetMotionMaster()->Clear();
+    me->GetMotionMaster()->MovePoint(0, x, y, z, MOVE_PATHFINDING);
+}
+
 void PartyBotAI::ChaseTarget(Unit* pTarget)
 {
-    if (m_role == ROLE_RANGE_DPS)
-        me->SetCasterChaseDistance(25.0f);
-    else if (me->HasDistanceCasterMovement())
+    float casterDistance = pTarget->GetObjectBoundingRadius() + 25.0f;
+
+    if (m_role == ROLE_RANGE_DPS || m_role == ROLE_HEALER)
+        me->SetCasterChaseDistance(casterDistance);
+    else
         me->SetCasterChaseDistance(0.0f);
 
-    float angle = frand((M_PI - 0.5f), (M_PI + 0.5f));
-    float distance = pTarget->GetMeleeReach();
+    float distance = m_role == ROLE_TANK ? 1.0f : pTarget->GetMeleeReach();
+
     if (distance > 3.0f)
-        distance *= frand(0.75, 0.9);
-    me->GetMotionMaster()->MoveChase(pTarget, distance, m_role == ROLE_MELEE_DPS ? angle : 0.0f);
+        distance *= frand(0.75f, 0.9f);
+
+    me->GetMotionMaster()->MoveChase(pTarget, distance);
 }
 
 bool PartyBotAI::DrinkAndEat()
@@ -331,7 +418,7 @@ bool PartyBotAI::AttackStart(Unit* pVictim)
     return false;
 }
 
-Unit* PartyBotAI::SelectAttackTarget(Player* pLeader) const
+Unit* PartyBotAI::SelectAttackTarget() const
 {
     // Who is attacking me.
     for (const auto pAttacker : me->GetAttackers())
@@ -341,10 +428,14 @@ Unit* PartyBotAI::SelectAttackTarget(Player* pLeader) const
     }
 
     // Who is the leader attacking.
-    if (Unit* pVictim = pLeader->GetVictim())
+    if (Player* pLeader = GetPartyLeader())
     {
-        if (pLeader->IsInCombat() && IsValidHostileTarget(pVictim))
-            return pVictim;
+        if (Unit* pVictim = pLeader->GetVictim())
+        {
+            if (pLeader->IsInCombat() &&
+                IsValidHostileTarget(pVictim))
+                return pVictim;
+        }
     }
 
     // Assist Pet
@@ -363,7 +454,7 @@ Unit* PartyBotAI::SelectAttackTarget(Player* pLeader) const
     // Check if other group members are under attack.
     if (Unit* pPartyAttacker = SelectPartyAttackTarget())
         return pPartyAttacker;
-
+    
     return nullptr;
 }
 
@@ -380,29 +471,19 @@ Unit* PartyBotAI::SelectPartyAttackTarget() const
             if (pMember == me)
                 continue;
 
-            if (m_role == ROLE_TANK)
-            {
-                // Do not attack other tanks tagert
-                if (pMember->AI())
-                {
-                    if (PartyBotAI* pAI = dynamic_cast<PartyBotAI*>(pMember->AI()))
-                    {
-                        if (pAI->m_role == ROLE_TANK)
-                            continue;
-                    }
-                }
-                else if (pMember->HasSpell(PB_SPELL_SHIELD_SLAM) ||
-                    pMember->HasSpell(PB_SPELL_HOLY_SHIELD) ||
-                    pMember->GetShapeshiftForm() == FORM_BEAR ||
-                    pMember->GetShapeshiftForm() == FORM_DIREBEAR)
-                    continue;
-            }
-
             for(const auto pAttacker : pMember->GetAttackers())
             {
-                if (!pAttacker->IsPlayer() &&
-                    IsValidHostileTarget(pAttacker) &&
-                    me->IsWithinDist(pAttacker, 50.0f))
+                if (pAttacker->IsPlayer() ||
+                    !IsValidHostileTarget(pAttacker) ||
+                    !me->IsWithinDist(pAttacker, 120.0f))
+                    continue;
+
+                if (m_role == ROLE_TANK && IsTank(pMember))
+                {
+                    if (pMember->GetVictim() != pAttacker)
+                        vAttackers.push_back(pAttacker);
+                }
+                else
                     vAttackers.push_back(pAttacker);
             }
 
@@ -411,7 +492,7 @@ Unit* PartyBotAI::SelectPartyAttackTarget() const
                 for (const auto pAttacker : pPet->GetAttackers())
                 {
                     if (IsValidHostileTarget(pAttacker) &&
-                        me->IsWithinDist(pAttacker, 50.0f))
+                        me->IsWithinDist(pAttacker, 120.0f))
                         vAttackers.push_back(pAttacker);
                 }
             }
@@ -648,9 +729,27 @@ void PartyBotAI::UpdateAI(uint32 const diff)
     if (me->IsDead())
         m_ressTimer += diff;
     if (m_spellTimer1 > 0)
-        m_spellTimer1 -= diff;
+    {
+        if (diff >= m_spellTimer1 || m_spellTimer1 > 35000)
+            m_spellTimer1 = 0;
+        else
+            m_spellTimer1 -= diff;
+    }
     if (m_aoeSpellTimer > 0)
-        m_aoeSpellTimer -= diff;
+    {
+        if (diff >= m_aoeSpellTimer || m_aoeSpellTimer > 35000)
+            m_aoeSpellTimer = 0;
+        else
+            m_aoeSpellTimer -= diff;
+    }
+    if (m_threatCheckTimer > 0)
+    {
+        if (diff >= m_threatCheckTimer || m_threatCheckTimer > 3000)
+            m_threatCheckTimer = 0;
+        else
+            m_threatCheckTimer -= diff;
+    }
+
     if (m_updateTimer.Passed())
         m_updateTimer.Reset(PB_UPDATE_INTERVAL);
     else
@@ -763,38 +862,29 @@ void PartyBotAI::UpdateAI(uint32 const diff)
     if(me->IsGod())
         me->SetCheatGod(false);
 
-    if (me->GetCurrentSpell(CURRENT_AUTOREPEAT_SPELL))
-    {
-        // Stop auto shot if no target.
-        if (!me->GetVictim())
-            me->InterruptSpell(CURRENT_AUTOREPEAT_SPELL, true);
-        else if (me->GetClass() == CLASS_HUNTER)
-        {
-            if (me->GetCombatDistance(me->GetVictim()) < 8.0f)
-                me->InterruptSpell(CURRENT_AUTOREPEAT_SPELL, true);
-        }
-
-    }
-
     if (me->IsNonMeleeSpellCasted(false, false, true))
         return;
 
     if (me->GetTargetGuid() == me->GetObjectGuid())
         me->ClearTarget();
 
-
     // First, check if there are enemies available
-    Unit* pVictim = me->GetVictim();
+    Unit* pVictim;
+    if (m_role == ROLE_HEALER)
+        pVictim = SelectAttackTarget();
+    else
+        pVictim = me->GetVictim();
 
     if (m_role != ROLE_HEALER && !pLeader->IsMounted())
     {
-        if (!pVictim || pVictim->IsDead() || pVictim->HasBreakableByDamageCrowdControlAura())
+        if (!pVictim || pVictim->IsDead() || pVictim->GetHealth() == 0.0f || pVictim->HasBreakableByDamageCrowdControlAura() || !IsValidHostileTarget(pVictim))
         {
-            if (Unit* pVictim = SelectAttackTarget(pLeader))
+            // Force select new Victim if current should not be attacked
+            if (Unit* pNewVictim = SelectAttackTarget())
             {
-                AttackStart(pVictim);
+                AttackStart(pNewVictim);
                 return;
-            }
+            }   
         }
 
         if (pVictim && !me->HasInArc(2 * M_PI_F / 3, pVictim) && !me->IsMoving())
@@ -804,8 +894,14 @@ void PartyBotAI::UpdateAI(uint32 const diff)
         }
     }
 
+    if (!pVictim)
+    {
+        if(me->GetCurrentSpell(CURRENT_AUTOREPEAT_SPELL))
+            me->InterruptSpell(CURRENT_AUTOREPEAT_SPELL, true);
+    }
+
     // Engage combat ASAP
-    if (!pLeader->IsMounted() && (pVictim || me->IsInCombat() || (m_role == ROLE_HEALER && pLeader->IsInCombat())))
+    if (!pLeader->IsMounted() && (pVictim || me->IsInCombat()))
     {
         UpdateInCombatAI();
         return;
@@ -819,35 +915,42 @@ void PartyBotAI::UpdateAI(uint32 const diff)
     {
         float leaderDistance = 0.0f;
 
-        // Distance to leader
+        // Check if should run or teleport to Leader
         if (!pLeader->IsDead())
+        {
             leaderDistance = me->GetDistance(pLeader);
 
-        // Teleport to leader if too far away.
-        if (leaderDistance > (PB_MAX_FOLLOW_DIST * 15.0f) || me->GetDistanceZ(pLeader) > (PB_MAX_FOLLOW_DIST * 3.2f))
-        {
-            if (!me->IsStopped())
-                me->StopMoving();
-            me->GetMotionMaster()->Clear();
-            me->GetMotionMaster()->MoveIdle();
-            char name[128] = {};
-            strcpy(name, pLeader->GetName());
-            ChatHandler(me).HandleGonameCommand(name);
-            return;
-        }
-        else if (leaderDistance > (PB_MAX_FOLLOW_DIST * 2.5f) &&
-            me->HasAuraType(SPELL_AURA_MOD_STEALTH) &&
-            !pLeader->GetVictim())
-        {
-            me->RemoveSpellsCausingAura(SPELL_AURA_MOD_STEALTH);
+            // Remove Stealth if geting far behind the Leader
+            if (leaderDistance > (PB_MAX_FOLLOW_DIST * 2.5f) &&
+                me->HasAuraType(SPELL_AURA_MOD_STEALTH) &&
+                !pLeader->GetVictim())
+            {
+                me->RemoveSpellsCausingAura(SPELL_AURA_MOD_STEALTH);
+            }
+
+            // Teleport to leader if too far away.
+            if (leaderDistance > (PB_MAX_FOLLOW_DIST * 15.0f) || me->GetDistanceZ(pLeader) > (PB_MAX_FOLLOW_DIST * 3.2f))
+            {
+                if (!me->IsStopped())
+                    me->StopMoving();
+                me->GetMotionMaster()->Clear();
+                me->GetMotionMaster()->MoveIdle();
+                char name[128] = {};
+                strcpy(name, pLeader->GetName());
+                ChatHandler(me).HandleGonameCommand(name);
+                return;
+            }
+
+            if (leaderDistance > (PB_MAX_FOLLOW_DIST * 1.1f))
+            {
+                if (me->GetMotionMaster()->GetCurrentMovementGeneratorType() != FOLLOW_MOTION_TYPE)
+                    me->GetMotionMaster()->MoveFollow(pLeader, urand(PB_MIN_FOLLOW_DIST, PB_MAX_FOLLOW_DIST), frand(PB_MIN_FOLLOW_ANGLE, PB_MAX_FOLLOW_ANGLE));
+                return;
+            }
         }
         
-        if (leaderDistance > (PB_MAX_FOLLOW_DIST * 1.1f))
-        {
-            if (me->GetMotionMaster()->GetCurrentMovementGeneratorType() != FOLLOW_MOTION_TYPE)
-                me->GetMotionMaster()->MoveFollow(pLeader, urand(PB_MIN_FOLLOW_DIST, PB_MAX_FOLLOW_DIST), frand(PB_MIN_FOLLOW_ANGLE, PB_MAX_FOLLOW_ANGLE));
-        }
-        else if (!me->IsMounted())
+
+        if (!me->IsMounted())
         {
             if (DrinkAndEat())
                 return;
@@ -886,9 +989,8 @@ void PartyBotAI::UpdateAI(uint32 const diff)
     if (me->GetStandState() != UNIT_STAND_STATE_STAND)
         me->SetStandState(UNIT_STAND_STATE_STAND);
 
-    if (!me->IsMoving() && !pVictim && me->GetMotionMaster()->GetCurrentMovementGeneratorType() != FOLLOW_MOTION_TYPE)
+    if (!pLeader->IsDead() && !me->IsMoving() && !pVictim && me->GetMotionMaster()->GetCurrentMovementGeneratorType() != FOLLOW_MOTION_TYPE)
         me->GetMotionMaster()->MoveFollow(pLeader, urand(PB_MIN_FOLLOW_DIST, PB_MAX_FOLLOW_DIST), frand(PB_MIN_FOLLOW_ANGLE, PB_MAX_FOLLOW_ANGLE));
-
 }
 
 void PartyBotAI::UpdateOutOfCombatAI()
@@ -954,54 +1056,28 @@ void PartyBotAI::UpdateOutOfCombatAI()
 
 void PartyBotAI::UpdateInCombatAI()
 {
+    Unit* pVictim = me->GetVictim();
+    Unit* pLeader = GetPartyLeader();
+    bool pCombatEngagementReady;
+
+    // Get up if not stand position
     if (me->GetStandState() != UNIT_STAND_STATE_STAND)
         me->SetStandState(UNIT_STAND_STATE_STAND);
 
-    Unit* pVictim = me->GetVictim();
-    Unit* pLeader = GetPartyLeader();
-
-    if (!CheckBossMechanics())
+    // Now check special Instance Mechanics
+    if (!CheckCombatInstanceMechanics(pCombatEngagementReady))
         return;
 
-    if (m_role == ROLE_TANK)
+    // Use Bandage
+    if (m_bandage &&
+        m_role != ROLE_HEALER &&
+        m_role != ROLE_TANK &&
+        me->GetHealDirectTargetTimer() <= 0 &&
+        me->GetHealthPercent() <= 50.0f &&
+        CanTryToCastSpell(me, m_bandage))
     {
-        // Defend party members.
-        if (!pVictim || pVictim->GetVictim() == me)
-        {
-            if (pVictim = SelectPartyAttackTarget())
-            {
-                me->AttackStop(true);
-                AttackStart(pVictim);
-            }
-        }
-
-        // Taunt target if its attacking someone else.
-        if (pVictim && pVictim->GetVictim() != me)
-        {
-            for (const auto& pSpellEntry : spellListTaunt)
-            {
-                if (CanTryToCastSpell(pVictim, pSpellEntry))
-                {
-                    if (DoCastSpell(pVictim, pSpellEntry) == SPELL_CAST_OK)
-                        return;
-                }
-            }
-        }
-    }
-
-    if (m_role == ROLE_HEALER)
-    {
-        if(!pLeader->IsWithinLOSInMap(me))
-            MoveToTarget(pLeader, 5.0f);
-        else if (me->GetDistance(pLeader) < 20.0f)
-        {
-            me->GetMotionMaster()->Clear();
-            me->GetMotionMaster()->MoveIdle();
-        }
-        else
-        {
-            MoveToTarget(pLeader, 15.0f);
-        }
+        if (DoCastSpell(me, m_bandage) == SPELL_CAST_OK)
+            return;
     }
 
     // Use potions
@@ -1023,7 +1099,59 @@ void PartyBotAI::UpdateInCombatAI()
             return;
     }
 
-    if (pVictim)
+    // Check if combat engagement is ready
+    if (!pCombatEngagementReady)
+        return;
+
+    // If role is Tank, try to find and defend party members.
+    if (m_role == ROLE_TANK)
+    {
+        if (!pVictim || pVictim->GetVictim() == me)
+        {
+            if (pVictim = SelectPartyAttackTarget())
+            {
+                me->AttackStop(true);
+                AttackStart(pVictim);
+            }
+        }
+
+        // Taunt target if it is attacking someone else that is not a tank
+        if (pVictim)
+        {
+            if (Unit* pVictimTarget = pVictim->GetVictim())
+            {
+                if(pVictimTarget->IsPlayer() &&
+                    pVictimTarget != me &&
+                    !IsTank(pVictimTarget->ToPlayer()))
+                {
+                    for (const auto& pSpellEntry : spellListTaunt)
+                    {
+                        if (CanTryToCastSpell(pVictim, pSpellEntry))
+                        {
+                            if (DoCastSpell(pVictim, pSpellEntry) == SPELL_CAST_OK)
+                                return;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // If healer, keep close to enemies to heal tank
+    if (m_role == ROLE_HEALER)
+    {
+        if (Unit* pChaseTarget = SelectAttackTarget())
+        {
+            ChaseTarget(pChaseTarget);
+            if (me->GetDistance(pChaseTarget) > 32.0f)
+                MoveToTargetDistance(pChaseTarget, 25.0f);
+        }
+        if (pLeader && !pLeader->IsDead() && !pLeader->IsWithinLOSInMap(me))
+            MoveToTarget(pLeader);
+    }
+
+    // If not Healer, force combat engagement
+    if (pVictim && m_role != ROLE_HEALER)
     {
         if(!me->HasUnitState(UNIT_STAT_MELEE_ATTACKING) &&
             m_role != ROLE_HEALER &&
@@ -1039,6 +1167,7 @@ void PartyBotAI::UpdateInCombatAI()
         }
     }
 
+    // Now go to class combat logic
     switch (me->GetClass())
     {
         case CLASS_PALADIN:
@@ -1131,8 +1260,11 @@ void PartyBotAI::UpdateOutOfCombatAI_Paladin()
         }
     }
 
-    if (m_role == ROLE_HEALER && FindAndHealInjuredAlly(90.0f))
-        return;
+    if (m_role == ROLE_HEALER)
+    {
+        if (FindAndHealInjuredAlly(90.0f, 50.0f))
+            return;
+    }
 }
 
 void PartyBotAI::UpdateInCombatAI_Paladin()
@@ -1234,7 +1366,7 @@ void PartyBotAI::UpdateInCombatAI_Paladin()
                 return;
         }
 
-        if (FindAndHealInjuredAlly(85.0f, 45.0f))
+        if (FindAndHealInjuredAlly(95.0f, 50.0f))
             return;
     }
     else
@@ -1358,8 +1490,11 @@ void PartyBotAI::UpdateOutOfCombatAI_Shaman()
             return;
     }
 
-    if (m_role == ROLE_HEALER && FindAndHealInjuredAlly(90.0f))
-        return;
+    if (m_role == ROLE_HEALER)
+    {
+        if(FindAndHealInjuredAlly(90.0f, 50.0f))
+            return;
+    }
 }
 
 void PartyBotAI::UpdateInCombatAI_Shaman()
@@ -1404,7 +1539,7 @@ void PartyBotAI::UpdateInCombatAI_Shaman()
 
     if (m_role == ROLE_HEALER)
     {
-        FindAndHealInjuredAlly(85.0f, 45.0f);
+        FindAndHealInjuredAlly(95.0f, 50.0f);
         return;
     }
     else
@@ -1536,7 +1671,7 @@ void PartyBotAI::UpdateInCombatAI_Hunter()
 
         if (Pet* pPet = me->GetPet())
         {
-            if (!pPet->GetVictim())
+            if (!pPet->GetVictim() || pPet->GetVictim() != pVictim)
             {
                 pPet->GetCharmInfo()->SetIsCommandAttack(true);
                 pPet->AI()->AttackStart(pVictim);
@@ -1550,9 +1685,13 @@ void PartyBotAI::UpdateInCombatAI_Hunter()
                 return;
         }
 
+        if (me->GetCurrentSpell(CURRENT_AUTOREPEAT_SPELL) &&
+            me->GetCombatDistance(pVictim) < 8.0f)
+            me->InterruptSpell(CURRENT_AUTOREPEAT_SPELL, true);
+
         if (me->HasSpell(PB_SPELL_AUTO_SHOT) &&
             !me->IsMoving() &&
-            (me->GetCombatDistance(pVictim) > 8.0f) &&
+            (me->GetCombatDistance(pVictim) >= 8.0f) &&
             !me->GetCurrentSpell(CURRENT_AUTOREPEAT_SPELL))
             me->CastSpell(pVictim, PB_SPELL_AUTO_SHOT, false);
 
@@ -1732,8 +1871,7 @@ void PartyBotAI::UpdateInCombatAI_Hunter()
 
         if (!me->HasUnitState(UNIT_STAT_ROOT) &&
             (me->GetCombatDistance(pVictim) < 8.0f) &&
-            (m_role != ROLE_MELEE_DPS) &&
-             me->GetMotionMaster()->GetCurrentMovementGeneratorType() != DISTANCING_MOTION_TYPE)
+            m_role != ROLE_MELEE_DPS)
         {
             if (!me->IsStopped())
                 me->StopMoving();
@@ -2204,8 +2342,11 @@ void PartyBotAI::UpdateOutOfCombatAI_Priest()
         }
     }
 
-    if (m_role == ROLE_HEALER && FindAndHealInjuredAlly(90.0f))
-        return;
+    if (m_role == ROLE_HEALER)
+    {
+        if (FindAndHealInjuredAlly(90.0f, 50.0f))
+            return;
+    }
 }
 
 void PartyBotAI::UpdateInCombatAI_Priest()
@@ -2313,7 +2454,7 @@ void PartyBotAI::UpdateInCombatAI_Priest()
             }
         }
 
-        if (FindAndHealInjuredAlly(85.0f, 45.0f))
+        if (FindAndHealInjuredAlly(95.0f, 50.0f))
             return;
     }
     else
@@ -2517,7 +2658,7 @@ void PartyBotAI::UpdateInCombatAI_Warlock()
 
         if (m_spells.warlock.pBanish && m_spellTimer1 <= 0)
         {   
-            if(Unit* pTarget = SelectSpellTargetDifferentFrom(m_spells.warlock.pBanish,pVictim,15.0f))
+            if(Unit* pTarget = SelectSpellTargetDifferentFrom(m_spells.warlock.pBanish,pVictim,20.0f))
             { 
                 if (DoCastSpell(pTarget, m_spells.warlock.pBanish) == SPELL_CAST_OK)
                 {
@@ -3300,7 +3441,10 @@ void PartyBotAI::PopulateConsumableSpellData()
 {
     // Healing Potion
     if (me->GetLevel() >= 60)
+    {
         m_potionSpell = sSpellMgr.GetSpellEntry(PB_SPELL_POT_REJUV);
+        m_bandage = sSpellMgr.GetSpellEntry(PB_SPELL_BAND_HEAVY_RUNE);
+    }
     else if (me->GetLevel() >= 45)
         m_potionSpell = sSpellMgr.GetSpellEntry(PB_SPELL_POT_HEAL_45);
     else if (me->GetLevel() >= 35)
@@ -3448,8 +3592,11 @@ void PartyBotAI::UpdateOutOfCombatAI_Druid()
         }
     }
 
-    if (m_role == ROLE_HEALER && FindAndHealInjuredAlly(90.0f))
-        return;
+    if (m_role == ROLE_HEALER)
+    {
+        if (FindAndHealInjuredAlly(90.0f, 50.0f))
+            return;
+    }
     else
     {
         if (me->GetShapeshiftForm() == FORM_NONE)
@@ -3546,7 +3693,7 @@ void PartyBotAI::UpdateInCombatAI_Druid()
             }
         }
 
-        if (FindAndHealInjuredAlly(85.0f, 45.0f))
+        if (FindAndHealInjuredAlly(95.0f, 50.0f))
             return;
     }
     
@@ -3554,7 +3701,8 @@ void PartyBotAI::UpdateInCombatAI_Druid()
     {
         if (m_spells.druid.pHibernate &&
             m_role != ROLE_TANK &&
-            !me->GetAttackers().empty())
+            !me->GetAttackers().empty() &&
+            me->GetEnemyCountInRadiusAround(me, 10.0f) > 1)
         {
             Unit* pAttacker = *me->GetAttackers().begin();
             if (CanTryToCastSpell(pAttacker, m_spells.druid.pHibernate))
@@ -3760,19 +3908,22 @@ void PartyBotAI::UpdateInCombatAI_Druid()
         case FORM_NONE:
         case FORM_MOONKIN:
         {
-            if (pVictim->CanReachWithMeleeAutoAttack(me) &&
-                    (pVictim->GetVictim() == me) &&
-                    !me->HasUnitState(UNIT_STAT_ROOT) &&
-                    (me->GetMotionMaster()->GetCurrentMovementGeneratorType() != DISTANCING_MOTION_TYPE))
+            if (pVictim->GetVictim() == me &&
+                me->GetEnemyCountInRadiusAround(me,10.0f) > 1 &&
+                pVictim->CanReachWithMeleeAutoAttack(me) &&
+                !me->HasUnitState(UNIT_STAT_ROOT) &&
+                (me->GetMotionMaster()->GetCurrentMovementGeneratorType() != DISTANCING_MOTION_TYPE))
             {
+                if (pVictim->HasAura(m_spells.druid.pEntanglingRoots->Id))
+                {
+                    RunAwayFromTarget(pVictim);
+                    return;
+                }
                 if (m_spells.druid.pEntanglingRoots &&
                     CanTryToCastSpell(pVictim, m_spells.druid.pEntanglingRoots))
                 {
                     if (DoCastSpell(pVictim, m_spells.druid.pEntanglingRoots) == SPELL_CAST_OK)
-                    {
-                        RunAwayFromTarget(pVictim);
                         return;
-                    }
                 }
             }
 
@@ -3838,13 +3989,60 @@ void PartyBotAI::UpdateInCombatAI_Druid()
     }
 }
 
-bool PartyBotAI::CheckBossMechanics()
+bool PartyBotAI::CheckThreat(Unit const* pTarget)
 {
+    if (!pTarget || m_threatCheckTimer > 0)
+        return m_threatOK;
+
+    float myThreat = 0.0f;
+    float currentVictimThreat = 0.0f;
+
+    // Find own reference in target's threat list
+    for (const auto i : pTarget->GetThreatManager().getThreatList())
+    {
+        if (i->getUnitGuid() == me->GetObjectGuid())
+            myThreat = i->getThreat();
+    }
+
+    if (pTarget->GetThreatManager().getCurrentVictim())
+        currentVictimThreat = pTarget->GetThreatManager().getCurrentVictim()->getThreat() * 0.95;
+
+    if (currentVictimThreat > myThreat)
+    {
+        m_threatOK = true;
+        m_threatCheckTimer = 1000;
+    }
+    else
+    {
+        m_threatOK = false;
+        m_threatCheckTimer = 300;
+
+    }
+
+    return m_threatOK;
+}
+
+bool PartyBotAI::CheckCombatInstanceMechanics(bool& pCombatEngagementReady)
+{
+    /// --------------
     // Return FALSE while not ok with desired mechanics
+    /// --------------
+
+    std::list<GameObject*> lBombs;
+    Unit* pTarget = nullptr;
+
+    // Set Combat readiness
+    pCombatEngagementReady = true;
 
     // If not in Raid Group or Inside Dungeon return
     if (!(me->GetMap()->IsDungeon() || me->GetGroup()->isRaidGroup()))
         return true;
+
+    // Get Target or Party Target
+    if (m_role == ROLE_HEALER)
+        pTarget = SelectAttackTarget();
+    else
+        pTarget = me->GetVictim();
 
     switch (me->GetMap()->GetId())
     {
@@ -3852,25 +4050,124 @@ bool PartyBotAI::CheckBossMechanics()
         case 409:
             
             // MAGMADAR - Fire Bomb
-            if (GameObject* pBomb = me->FindNearestGameObject(177704, 6.0f))
+            // While there is a bomb nearby try to run away
+            me->GetGameObjectListWithEntryInGrid(lBombs, 177704, 10.0f);
+            for (const auto& pGo : lBombs)
             {
-                RunAwayFromObject(pBomb, 8.0f, me->GetVictim());
-                return false;
+                if (pGo->isSpawned())
+                {
+                    RunAwayFromObject(pGo, 12.5f);
+                    return false;
+                }
             }
 
             // GEHENNAS - Rain of Fire
+            // While under Rain of Fire, run away
             if (me->HasAura(19717))
             {
                 RunAwayFromAOE(12.0f);
                 return false;
             }
 
-            // GARR
-            if (Unit* pVictim = me->GetVictim())
+            // BARON GEDDON - Living Bomb
+            // If has Living Bomb aura, run to specific location in Baon's cave
+            if (me->HasAura(20475))
             {
-                if (pVictim->GetEntry() == 12057)
-                    m_aoeSpellTimer = 30 * IN_MILLISECONDS;
+                float x = 680;
+                float y = -810;
+                float z = me->GetPositionZ();
+                me->UpdateAllowedPositionZ(x, y, z);      // update to LOS height if available
+                me->GetMotionMaster()->Clear();
+                me->GetMotionMaster()->MovePoint(0, x, y, z, MOVE_PATHFINDING);
+                return false;
             }
+
+            // Target based behaviour
+            if (pTarget)
+            {
+                switch (pTarget->GetEntry())
+                {
+                    // GARR -  do not use AoE - kill Garr first and do not aggro adds
+                    case 12057:
+                        // Do not attack if high threat
+                        if ((m_role == ROLE_RANGE_DPS || m_role == ROLE_MELEE_DPS) && !CheckThreat(pTarget))
+                            pCombatEngagementReady = false;
+                        m_aoeSpellTimer = 30 * IN_MILLISECONDS;
+                        // Move Away if too close
+                        if ((m_role == ROLE_RANGE_DPS || m_role == ROLE_HEALER) &&
+                            me->GetDistance(pTarget) < 20.0f)
+                        {
+                            RunAwayFromTarget(pTarget, true, 25.0f);
+                            return false;
+                        }
+                        break;
+
+                    // Flamewalker Protector
+                    case 12119:
+                    // Flamewalker Elite
+                    case 11664:
+                    // GEHENNAS
+                    case 12259:
+                    // LUCIFRON
+                    case 12118:
+                        // Do not attack if high threat
+                        if ((m_role == ROLE_RANGE_DPS || m_role == ROLE_MELEE_DPS) && !CheckThreat(pTarget))
+                            pCombatEngagementReady = false;
+                        break;
+
+                    // Try to keep distance
+                    // Molten Giant
+                    case 11658:
+                    // MAGMADAR
+                    case 11982:
+                    // SHAZZRAH
+                    case 12264:
+
+                        // Do not attack if high threat
+                        if ((m_role == ROLE_RANGE_DPS || m_role == ROLE_MELEE_DPS) && !CheckThreat(pTarget))
+                            pCombatEngagementReady = false;
+                        
+                        break;
+
+                }
+
+                // BARON GEDDON
+                if (pTarget->GetEntry() == 12056)
+                {
+                    if (m_role == ROLE_TANK)
+                        return true;
+
+                    // Do not attack if high threat
+                    if ((m_role == ROLE_RANGE_DPS || m_role == ROLE_MELEE_DPS) && !CheckThreat(pTarget->ToCreature()))
+                        pCombatEngagementReady = false;
+                    
+                    // Inferno Aura and prepare for final bomb explosion
+                    if (pTarget->HasAura(19695) || pTarget->GetHealthPercent() < 2.5f)
+                    {
+                        if (me->GetDistance(pTarget) < 22.0f)
+                        {
+                            RunAwayFromTarget(pTarget, false, 25.0f);
+                            return false;
+                        }
+
+                        // Melee DPS should not engage while Baron has inferno or low health
+                        if (m_role = ROLE_MELEE_DPS)
+                            return pCombatEngagementReady = false;
+                    }
+
+                    // Ranged and Healers should always keep distance
+                    if ((m_role == ROLE_RANGE_DPS || m_role == ROLE_HEALER) &&
+                        me->GetDistance(pTarget) < 20.0f)
+                    {
+                        RunAwayFromTarget(pTarget, true, 25.0f);
+                        return false;
+                    }
+                        
+                }
+
+            }
+
+            break;
         
         default:
             break;

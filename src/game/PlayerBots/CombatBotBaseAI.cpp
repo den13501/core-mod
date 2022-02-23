@@ -294,20 +294,29 @@ void CombatBotBaseAI::PopulateSpellData()
                 }
                 else if (pSpellEntry->SpellName[0].find("Blessing of Kings") != std::string::npos)
                 {
-                    if (!pBlessingOfKings ||
-                        pBlessingOfKings->Rank < pSpellEntry->Rank)
+                    if (pSpellEntry->SpellName[0].find("Greater") != std::string::npos)
+                        pBlessingOfKings = pSpellEntry;
+                    else if (!pBlessingOfKings ||
+                        (pBlessingOfKings->SpellName[0].find("Greater") == std::string::npos &&
+                        pBlessingOfKings->Rank < pSpellEntry->Rank))
                         pBlessingOfKings = pSpellEntry;
                 }
                 else if (pSpellEntry->SpellName[0].find("Blessing of Wisdom") != std::string::npos)
                 {
-                    if (!pBlessingOfWisdom ||
-                        pBlessingOfWisdom->Rank < pSpellEntry->Rank)
+                    if(pSpellEntry->SpellName[0].find("Greater") != std::string::npos)
+                        pBlessingOfWisdom = pSpellEntry;
+                    else if (!pBlessingOfWisdom ||
+                        (pBlessingOfWisdom->SpellName[0].find("Greater") == std::string::npos &&
+                        pBlessingOfWisdom->Rank < pSpellEntry->Rank))
                         pBlessingOfWisdom = pSpellEntry;
                 }
                 else if (pSpellEntry->SpellName[0].find("Blessing of Might") != std::string::npos)
                 {
+                    if (pSpellEntry->SpellName[0].find("Greater") != std::string::npos)
+                        pBlessingOfMight = pSpellEntry;
                     if (!pBlessingOfMight ||
-                        pBlessingOfMight->Rank < pSpellEntry->Rank)
+                        (pBlessingOfMight->SpellName[0].find("Greater") == std::string::npos &&
+                        pBlessingOfMight->Rank < pSpellEntry->Rank))
                         pBlessingOfMight = pSpellEntry;
                 }
                 else if (pSpellEntry->SpellName[0].find("Blessing of Light") != std::string::npos)
@@ -2356,7 +2365,10 @@ bool CombatBotBaseAI::HealInjuredTargetPeriodic(Unit* pTarget)
         {
             if (DoCastSpell(pTarget, pHealSpell) == SPELL_CAST_OK)
             {
-                pTarget->ToPlayer()->SetHealTargetTimer(0, 1000);
+                if (Player* pPlayer = pTarget->ToPlayer())
+                {
+                    pPlayer->SetHealTargetTimer(0, 1000);
+                }
                 return true;
             }
         }
@@ -2370,7 +2382,14 @@ bool CombatBotBaseAI::HealInjuredTargetDirect(Unit* pTarget)
     if (SpellEntry const* pHealSpell = SelectMostEfficientHealingSpell(pTarget, spellListDirectHeal))
         if (DoCastSpell(pTarget, pHealSpell) == SPELL_CAST_OK)
         {
-            pTarget->ToPlayer()->SetHealTargetTimer(1000,0);
+            if (Player* pPlayer = pTarget->ToPlayer())
+            {
+                uint32 spellTimer = 1000;
+                if (pHealSpell->GetCastTime())
+                    spellTimer = (int)(0.5 * (pHealSpell->GetCastTime()));
+                spellTimer = IsTank(pPlayer) ? 1.0f : spellTimer;
+                pPlayer->SetHealTargetTimer(spellTimer, 0);
+            }
             return true;
         }
 
@@ -2423,12 +2442,14 @@ Unit* CombatBotBaseAI::SelectHealTarget(float healthPercent, bool periodic) cons
                 }
 
                 // Also check party member pets - not raid pets
-                if (Unit* pPet = pMember->GetPet())
+                if (pMember->GetSubGroup() == me->GetSubGroup())
                 {
-                    if (pMember->GetSubGroup() == me->GetSubGroup() &&
-                        IsValidHealTarget(pPet, healthPercent) &&
-                        !(periodic && pPet->HasAuraType(SPELL_AURA_PERIODIC_HEAL)))
-                        vLowPriority.push_back(pPet);
+                    if (Unit* pPet = pMember->GetPet())
+                    {
+                        if (IsValidHealTarget(pPet, healthPercent) &&
+                            !(periodic && pPet->HasAuraType(SPELL_AURA_PERIODIC_HEAL)))
+                            vLowPriority.push_back(pPet);
+                    }
                 }
             }
         }
@@ -2449,6 +2470,7 @@ bool CombatBotBaseAI::IsValidHostileTarget(Unit const* pTarget) const
     return pTarget->IsTargetableForAttack(false, true) &&
            me->IsValidAttackTarget(pTarget) &&
            pTarget->IsVisibleForOrDetect(me, me, false) &&
+           !pTarget->HasUnitState(UNIT_STAT_ISOLATED) &&
            !pTarget->HasBreakableByDamageCrowdControlAura();
 }
 
@@ -2586,6 +2608,9 @@ bool CombatBotBaseAI::IsValidBuffTarget(Unit const* pTarget, SpellEntry const* p
 
 Player* CombatBotBaseAI::SelectBuffTarget(SpellEntry const* pSpellEntry) const
 {
+    if (IsValidBuffTarget(me, pSpellEntry))
+        return me;
+
     std::vector<Player*> vBuffTargets;
 
     Player* pTarget = nullptr;
@@ -2650,6 +2675,9 @@ Player* CombatBotBaseAI::SelectBuffTarget(SpellEntry const* pSpellEntryMeele, Sp
 
 Player* CombatBotBaseAI::SelectDispelTarget(SpellEntry const* pSpellEntry) const
 {
+    if(IsValidDispelTarget(me,pSpellEntry))
+        return me;
+
     std::vector<Player*> vDispelTargets;
 
     Player* pTarget = nullptr;
@@ -3011,6 +3039,26 @@ bool CombatBotBaseAI::IsDualWielding() const
         return false;
 
     if (pItem->GetProto()->InventoryType == INVTYPE_WEAPON)
+        return true;
+
+    return false;
+}
+
+bool CombatBotBaseAI::IsTank(Player* pPlayer) const
+{
+    // Do not attack other tanks tagert
+    if (pPlayer->AI())
+    {
+        if (CombatBotBaseAI* pAI = dynamic_cast<CombatBotBaseAI*>(pPlayer->AI()))
+        {
+            if (pAI->m_role == ROLE_TANK)
+                return true;
+        }
+    }
+    else if (pPlayer->HasSpell(SPELL_SHIELD_SLAM) ||
+        pPlayer->HasSpell(SPELL_HOLY_SHIELD) ||
+        pPlayer->GetShapeshiftForm() == FORM_BEAR ||
+        pPlayer->GetShapeshiftForm() == FORM_DIREBEAR)
         return true;
 
     return false;

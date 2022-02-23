@@ -160,6 +160,7 @@ public:
     bool IsSpellReady(SpellEntry const* pSpellEntry) const;
     bool IsWearingShield() const;
     bool IsDualWielding() const;
+    bool IsTank(Player* pPlayer) const;
 
     void EquipOrUseNewItem();
     void AddItemToInventory(uint32 itemId);
