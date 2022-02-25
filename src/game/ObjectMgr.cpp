@@ -11137,45 +11137,13 @@ void ObjectMgr::ApplyPremadeGearTemplateToPlayer(uint32 entry, Player* pPlayer) 
     for (int i = EQUIPMENT_SLOT_START; i < EQUIPMENT_SLOT_END; ++i)
         pPlayer->DestroyItem(INVENTORY_SLOT_BAG_0, i, true);
 
-    // Learn Dual Wield Specialization
-    if (pPlayer->GetClass() == CLASS_WARRIOR || pPlayer->GetClass() == CLASS_ROGUE || pPlayer->GetClass() == CLASS_HUNTER)
-        if (!pPlayer->HasSpell(674))
-            pPlayer->LearnSpell(674, false, false);
-
     for (auto item : itr->second.items)
     {
         if (!item.requiredTeam || (pPlayer->GetTeam() == item.requiredTeam))
         {
             ItemPrototype const* pItem = GetItemPrototype(item.itemId);
-
-            // Set required reputation
-            if (pItem->RequiredReputationFaction && pItem->RequiredReputationRank)
-                if (FactionEntry const* pFaction = GetFactionEntry(pItem->RequiredReputationFaction))
-                    if (pPlayer->GetReputationMgr().GetRank(pFaction) < pItem->RequiredReputationRank)
-                        pPlayer->GetReputationMgr().SetReputation(pFaction, pPlayer->GetReputationMgr().GetRepPointsToRank(ReputationRank(pItem->RequiredReputationRank)));
-
-            // Set required honor rank
-            if (pItem->RequiredHonorRank)
-            {
-                if (pPlayer->GetHonorMgr().GetRank().rank < pItem->RequiredHonorRank)
-                {
-                    pPlayer->GetHonorMgr().SetRankPoints(60000.0f);
-                    pPlayer->GetHonorMgr().Update();
-                }
-            }
-
-            // Learn required profession
-            if (pItem->RequiredSkill && (!pPlayer->HasSkill(pItem->RequiredSkill) || (pPlayer->GetSkill(pItem->RequiredSkill, false, false) <  pItem->RequiredSkillRank)))
-                pPlayer->SetSkill(pItem->RequiredSkill, pItem->RequiredSkillRank, 300);
-
-            // Learn required proficiency
-            if (uint32 proficiencySpellId = pItem->GetProficiencySpell())
-                if (!pPlayer->HasSpell(proficiencySpellId))
-                    pPlayer->LearnSpell(proficiencySpellId, false, false);
-
             pPlayer->SatisfyItemRequirements(pItem);
             pPlayer->StoreNewItemInBestSlots(item.itemId, 1, item.enchantId);
-
         }
     }
 
