@@ -99,7 +99,6 @@ public:
     bool CanUseCrowdControl(SpellEntry const* pSpellEntry, Unit* pTarget) const;
     bool DrinkAndEat();
     bool ShouldAutoRevive() const;
-    void RunAwayFromTarget(Unit* pTarget);
     bool CrowdControlMarkedTargets();
     void RunAwayFromTarget(Unit* pTarget, bool pFollowLeader = true, float pDistance = 12.0f);
     void RunAwayFromObject(GameObject* pObject, float pDistance = 10.0f);

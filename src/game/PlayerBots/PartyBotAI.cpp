@@ -377,10 +377,22 @@ bool PartyBotAI::DrinkAndEat()
             me->StopMoving();
             me->GetMotionMaster()->MoveIdle();
         }
-        if(me->GetLevel() >= 50)
-            me->CastSpell(me, PB_SPELL_DRINK_50, true);
+        if (me->GetLevel() >= 50)
+        {
+            if (SpellEntry const* pSpellEntry = sSpellMgr.GetSpellEntry(PB_SPELL_DRINK_50))
+            {
+                me->CastSpell(me, pSpellEntry, true);
+                me->RemoveSpellCooldown(*pSpellEntry);
+            }
+        }
         else
-            me->CastSpell(me, PB_SPELL_DRINK, true);
+        {
+            if (SpellEntry const* pSpellEntry = sSpellMgr.GetSpellEntry(PB_SPELL_DRINK))
+            {
+                me->CastSpell(me, pSpellEntry, true);
+                me->RemoveSpellCooldown(*pSpellEntry);
+            }
+        }
         return true;
     }
 
@@ -472,18 +484,6 @@ Unit* PartyBotAI::GetMarkedTarget(RaidTargetIcon mark) const
 
 Unit* PartyBotAI::SelectAttackTarget() const
 {
-    // Stick to marked target in combat.
-    if (me->IsInCombat() || pLeader->GetVictim())
-    {
-        for (auto markId : m_marksToFocus)
-        {
-            ObjectGuid targetGuid = me->GetGroup()->GetTargetWithIcon(markId);
-            if (targetGuid.IsUnit())
-                if (Unit* pVictim = me->GetMap()->GetUnit(targetGuid))
-                    if (IsValidHostileTarget(pVictim))
-                        return pVictim;
-        }
-    }
 
     // Who is attacking me.
     for (const auto pAttacker : me->GetAttackers())
@@ -497,6 +497,16 @@ Unit* PartyBotAI::SelectAttackTarget() const
     {
         if (Unit* pVictim = pLeader->GetVictim())
         {
+            // Stick to marked target in combat.
+            for (auto markId : m_marksToFocus)
+            {
+                ObjectGuid targetGuid = me->GetGroup()->GetTargetWithIcon(markId);
+                if (targetGuid.IsUnit())
+                    if (Unit* pVictim = me->GetMap()->GetUnit(targetGuid))
+                        if (IsValidHostileTarget(pVictim))
+                            return pVictim;
+            }
+
             if (pLeader->IsInCombat() &&
                 IsValidHostileTarget(pVictim))
                 return pVictim;
@@ -1973,7 +1983,7 @@ void PartyBotAI::UpdateInCombatAI_Hunter()
             if (!me->IsStopped())
                 me->StopMoving();
             me->GetMotionMaster()->Clear();
-            RunAwayFromTarget(pVictim);
+            RunAwayFromTarget(pVictim,true);
             return;
         }
 
@@ -2118,7 +2128,7 @@ void PartyBotAI::UpdateInCombatAI_Mage()
                         CanTryToCastSpell(me, m_spells.mage.pFrostNova))
                     {
                         DoCastSpell(me, m_spells.mage.pFrostNova);
-                        RunAwayFromTarget(pVictim);
+                        RunAwayFromTarget(pVictim,true);
                         return;
                     }
                 }
@@ -2475,7 +2485,7 @@ void PartyBotAI::UpdateInCombatAI_Priest()
             {
                 if (DoCastSpell(pAttacker, m_spells.priest.pShackleUndead) == SPELL_CAST_OK)
                 {
-                    RunAwayFromTarget(pAttacker);
+                    RunAwayFromTarget(pAttacker,true);
                     return;
                 }
             }
@@ -3364,7 +3374,7 @@ void PartyBotAI::UpdateInCombatAI_Rogue()
                 {
                     if (DoCastSpell(me, m_spells.rogue.pVanish) == SPELL_CAST_OK)
                     {
-                        RunAwayFromTarget(pVictim);
+                        RunAwayFromTarget(pVictim,true);
                         return;
                     }
                 }
@@ -4016,7 +4026,7 @@ void PartyBotAI::UpdateInCombatAI_Druid()
             {
                 if (pVictim->HasAura(m_spells.druid.pEntanglingRoots->Id))
                 {
-                    RunAwayFromTarget(pVictim);
+                    RunAwayFromTarget(pVictim,true);
                     return;
                 }
                 if (m_spells.druid.pEntanglingRoots &&

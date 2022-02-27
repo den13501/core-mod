@@ -2862,10 +2862,10 @@ bool CombatBotBaseAI::CanTryToCastSpell(Unit const* pTarget, SpellEntry const* p
 
 bool CombatBotBaseAI::IsSpellReady(SpellEntry const* pSpellEntry) const
 {
-    if (me->HasSpellCooldown(pSpellEntry->Id))
+    if (!me->IsSpellReady(pSpellEntry->Id))
         return false;
 
-    if (me->GetGlobalCooldownMgr().HasGlobalCooldown(pSpellEntry))
+    if (me->HasGCD(pSpellEntry))
         return false;
 
     if (pSpellEntry->CasterAuraState &&
