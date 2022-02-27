@@ -1505,8 +1505,8 @@ void BattleBotAI::UpdateInCombatAI_Hunter()
             if (!me->IsStopped())
                 me->StopMoving();
             me->GetMotionMaster()->Clear();
-            if (me->GetMotionMaster()->MoveDistance(pVictim, 25.0f))
-                return;
+            me->GetMotionMaster()->MoveDistance(pVictim, 25.0f);
+            return;
         }
 
         if (me->HasSpell(BB_SPELL_AUTO_SHOT) &&
@@ -1630,8 +1630,9 @@ void BattleBotAI::UpdateInCombatAI_Mage()
                     DoCastSpell(me, m_spells.mage.pFrostNova);
                 }
 
-                if (me->GetMotionMaster()->MoveDistance(pVictim, 25.0f))
-                    return;
+                me->GetMotionMaster()->MoveDistance(pVictim, 25.0f);
+
+                return;
             }
         }
 
@@ -2537,8 +2538,8 @@ void BattleBotAI::UpdateInCombatAI_Rogue()
                 {
                     if (DoCastSpell(me, m_spells.rogue.pVanish) == SPELL_CAST_OK)
                     {
-                        if (me->GetMotionMaster()->MoveDistance(pVictim, 40.0f))
-                            return;
+                        me->GetMotionMaster()->MoveDistance(pVictim, 40.0f);
+                        return;
                     }
                 }
             }
@@ -3093,8 +3094,8 @@ void BattleBotAI::UpdateInCombatAI_Druid()
                             return;
                     }
                     me->SetCasterChaseDistance(25.0f);
-                    if (me->GetMotionMaster()->MoveDistance(pVictim, 25.0f))
-                        return;
+                    me->GetMotionMaster()->MoveDistance(pVictim, 25.0f);
+                    return;
                 }
 
                 if (m_spells.druid.pFaerieFire &&

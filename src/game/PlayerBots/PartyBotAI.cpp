@@ -437,12 +437,9 @@ bool PartyBotAI::CanUseCrowdControl(SpellEntry const* pSpellEntry, Unit* pTarget
         AreOthersOnSameTarget(pTarget->GetObjectGuid()))
         return false;
 
-    if (pSpellEntry->HasSingleTargetAura())
-    {
-        auto const& singleAuras = me->GetSingleCastSpellTargets();
-        if (singleAuras.find(pSpellEntry) != singleAuras.end())
-            return false;
-    }
+    if (!m_marksToCC.empty() && pSpellEntry->HasSingleTargetAura() &&
+        !me->GetSingleCastSpellTargets().empty())
+        return false;
 
     return true;
 }
@@ -2206,8 +2203,7 @@ void PartyBotAI::UpdateInCombatAI_Mage()
         {
             if (Unit* pTarget = SelectAttackerDifferentFrom(pVictim))
             {
-                if (pTarget->GetHealthPercent() > 20.0f &&
-                    CanTryToCastSpell(pTarget, m_spells.mage.pPolymorph) &&
+                if (CanTryToCastSpell(pTarget, m_spells.mage.pPolymorph) &&
                     CanUseCrowdControl(m_spells.mage.pPolymorph, pTarget))
                 {
                     if (DoCastSpell(pTarget, m_spells.mage.pPolymorph) == SPELL_CAST_OK)
@@ -3368,8 +3364,8 @@ void PartyBotAI::UpdateInCombatAI_Rogue()
                 {
                     if (DoCastSpell(me, m_spells.rogue.pVanish) == SPELL_CAST_OK)
                     {
-                        if (RunAwayFromTarget(pVictim))
-                            return;
+                        RunAwayFromTarget(pVictim);
+                        return;
                     }
                 }
             }
