@@ -199,8 +199,17 @@ void AuctionHouseBotMgr::AddItem(AuctionHouseBotEntry e, AuctionHouseObject *auc
     else
         itemStack = e.stack;
     
-    itemBid = priceFactor * (urand(10,30) * 0.05f) * e.bid;
-    itemBuyOut = priceFactor * (urand(16,30) * 0.05f) * e.buyout;
+    if (e.bid == 0)
+        itemBid = prototype->SellPrice * 5 * itemStack;
+    else
+        itemBid = e.bid;
+    itemBid = itemBid * priceFactor * (urand(10,30) * 0.05f);
+    
+    if (e.buyout == 0)
+        itemBuyOut = itemBid * 2;
+    else
+        itemBuyOut = e.buyout;
+    itemBuyOut = itemBuyOut * priceFactor * (urand(16,30) * 0.05f);
     if (!urand(0, 4))
         itemBuyOut--;
         
@@ -232,6 +241,29 @@ void AuctionHouseBotMgr::AddItem(AuctionHouseBotEntry e, AuctionHouseObject *auc
     auctionEntry->SaveToDB();
 }
 
+void AuctionHouseBotMgr::Create(uint32 itemId)
+{
+
+    ItemPrototype const* prototype = sObjectMgr.GetItemPrototype(itemId);
+    if (prototype == nullptr)
+    {
+        sLog.outInfo("AHBot::Create() : Item %u does not exist.", itemId);
+        return;
+    }
+
+    uint32 stack = prototype->GetMaxStackSize();
+    uint32 multi = prototype->Quality + 1;
+    uint32 bid = prototype->SellPrice * multi * 5 * stack;
+    uint32 buyout = bid * 2;
+
+    if (!WorldDatabase.PExecute("INSERT INTO `auctionhousebot` (`item`, `stack`, `bid`, `buyout`) VALUES (%u, %u, %u, %u)", itemId, stack, bid, buyout))
+    {
+        sLog.outInfo("AHBot::Create() : Error creating auction for item %u.", itemId);
+        return;
+    }
+
+}
+
 bool ChatHandler::HandleAHBotUpdateCommand(char *args)
 {
     sAuctionHouseBotMgr.Update(true);
@@ -243,5 +275,17 @@ bool ChatHandler::HandleAHBotReloadCommand(char *args)
 {
     sAuctionHouseBotMgr.Load();
     SendSysMessage("[AHBot] Reload finished.");
+    return true;
+}
+
+bool ChatHandler::HandleAHBotCreateCommand(char *args)
+{
+    ///- Get the command line arguments
+    uint32 itemId;
+    if(!ExtractUInt32(&args, itemId))
+        return false;
+
+    sAuctionHouseBotMgr.Create(itemId);
+    SendSysMessage("[AHBot] Auction Created.");
     return true;
 }

@@ -496,6 +496,8 @@ bool PlayerBotMgr::AddPartyBot(Player* pPlayer, std::string option, uint32 force
     {
         botRace = pPlayer->GetRace();
         botClass = SelectRandomClassForRace(botRace);
+        while(botClass == pPlayer->GetClass())
+            botClass = SelectRandomClassForRace(botRace);
     }
 
     if (!botRole)
