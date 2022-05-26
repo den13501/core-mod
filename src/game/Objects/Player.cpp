@@ -7638,7 +7638,7 @@ void Player::CastItemCombatSpell(Unit* Target, WeaponAttackType attType)
                 else if (charges == 1)
                 {
                     ApplyEnchantment(item, TEMP_ENCHANTMENT_SLOT, false);
-                    item->ClearEnchantment(TEMP_ENCHANTMENT_SLOT);
+                    item->ClearEnchantment(TEMP_ENCHANTMENT_SLOT, true);
                 }
             }
         }
@@ -11888,7 +11888,7 @@ void Player::UpdateEnchantTime(uint32 time)
         else if (itr->leftduration <= time)
         {
             ApplyEnchantment(itr->item, itr->slot, false, false);
-            itr->item->ClearEnchantment(itr->slot);
+            itr->item->ClearEnchantment(itr->slot, true);
             next = m_enchantDuration.erase(itr);
         }
         else if (itr->leftduration > time)
