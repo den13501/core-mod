@@ -1243,7 +1243,7 @@ void PartyBotAI::UpdateInCombatAI()
             AttackStart(pVictim);
 
         if (((m_role == ROLE_TANK || m_role == ROLE_MELEE_DPS) &&
-            !pVictim->IsWithinMeleeRange(me)) ||
+            !pVictim->CanReachWithMeleeAutoAttack(me)) ||
             (m_role == ROLE_RANGE_DPS &&
                 me->GetDistance(pVictim) > 28.0f))
         {
@@ -1508,7 +1508,7 @@ void PartyBotAI::UpdateInCombatAI_Paladin()
 
             if (m_spells.paladin.pConsecration &&
                ((me->GetEnemyCountInRadiusAround(me,10.0f) > 2) ||
-                  (me->HasAura(20059) && pVictim->IsWithinMeleeRange(me)) ) &&
+                  (me->HasAura(20059) && pVictim->CanReachWithMeleeAutoAttack(me)) ) &&
                 CanTryToCastSpell(me, m_spells.paladin.pConsecration))
             {
                 if (DoCastSpell(me, m_spells.paladin.pConsecration) == SPELL_CAST_OK)
@@ -2712,7 +2712,7 @@ void PartyBotAI::UpdateInCombatAI_Warlock()
         if (m_spells.warlock.pDeathCoil &&
             me->GetHealthPercent() < 65.0f &&
             pVictim->GetVictim() == me &&
-            pVictim->IsWithinMeleeRange(me) &&
+            pVictim->CanReachWithMeleeAutoAttack(me) &&
             CanTryToCastSpell(pVictim, m_spells.warlock.pDeathCoil))
         {
             if (DoCastSpell(pVictim, m_spells.warlock.pDeathCoil) == SPELL_CAST_OK)
@@ -2930,7 +2930,7 @@ void PartyBotAI::UpdateInCombatAI_Warrior()
         }
 
         // STANCE SELECTION
-        if (pVictim->IsWithinMeleeRange(me))
+        if (pVictim->CanReachWithMeleeAutoAttack(me))
         {
             if (m_role == ROLE_TANK || me->GetHealthPercent() < 25.0f)
             {
