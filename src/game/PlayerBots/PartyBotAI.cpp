@@ -2333,7 +2333,7 @@ void PartyBotAI::UpdateOutOfCombatAI_Priest()
             }
         }
     }
-
+#if SUPPORTED_CLIENT_BUILD >= CLIENT_BUILD_1_10_2
     if (m_spells.priest.pPrayerofSpirit)
     {
         if (Player* pTarget = SelectBuffTarget(m_spells.priest.pPrayerofSpirit))
@@ -2362,7 +2362,22 @@ void PartyBotAI::UpdateOutOfCombatAI_Priest()
             }
         }
     }
-
+#else
+    if (m_spells.priest.pDivineSpirit)
+    {
+        if (Player* pTarget = SelectBuffTarget(m_spells.priest.pDivineSpirit))
+        {
+            if (CanTryToCastSpell(me, m_spells.priest.pDivineSpirit))
+            {
+                if (DoCastSpell(me, m_spells.priest.pDivineSpirit) == SPELL_CAST_OK)
+                {
+                    m_isBuffing = true;
+                   return;
+                }
+            }
+        }
+    }
+#endif
     if (m_spells.priest.pShadowProtection)
     {
         if (Player* pTarget = SelectBuffTarget(m_spells.priest.pShadowProtection))
