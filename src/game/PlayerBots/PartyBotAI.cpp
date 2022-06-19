@@ -930,7 +930,7 @@ void PartyBotAI::UpdateAI(uint32 const diff)
         return;
     }
 
-    if (me->HasAuraType(SPELL_AURA_FEIGN_DEATH))
+    if (me->HasUnitState(UNIT_STAT_FEIGN_DEATH) && me->HasAuraType(SPELL_AURA_FEIGN_DEATH))
     {
         if (me->GetEnemyCountInRadiusAround(me, 20.0f) > 0)
             return;
