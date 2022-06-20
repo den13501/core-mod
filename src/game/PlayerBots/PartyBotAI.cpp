@@ -1044,43 +1044,15 @@ void PartyBotAI::UpdateAI(uint32 const diff)
             }
 
             // Teleport to leader if too far away.
-            bool const tooFarAway = !me->IsWithinDistInMap(pLeader, 100.0f);
-            bool const onDifferentTransports = me->m_movementInfo.t_guid != pLeader->m_movementInfo.t_guid;
-
-            if (tooFarAway || onDifferentTransports || leaderDistance > (PB_MAX_FOLLOW_DIST * 15.0f) || me->GetDistanceZ(pLeader) > (PB_MAX_FOLLOW_DIST * 3.2f))
+            if (!me->IsWithinDistInMap(pLeader, 100.0f) || leaderDistance > (PB_MAX_FOLLOW_DIST * 15.0f) || me->GetDistanceZ(pLeader) > (PB_MAX_FOLLOW_DIST * 3.2f))
             {
                 if (!me->IsStopped())
                     me->StopMoving();
                 me->GetMotionMaster()->Clear();
                 me->GetMotionMaster()->MoveIdle();
-
-                if (tooFarAway)
-                {
-                    char name[128] = {};
-                    strcpy(name, pLeader->GetName());
-                    ChatHandler(me).HandleGonameCommand(name);
-                }
-                else // if (onDifferentTransports)
-                {
-                    bool sendHeartbeat = false;
-
-                    if (GenericTransport* pMyTransport = me->GetTransport())
-                    {
-                        sendHeartbeat = true;
-                        pMyTransport->RemovePassenger(me);
-                        me->Relocate(pLeader->GetPositionX(), pLeader->GetPositionY(), pLeader->GetPositionZ());
-                    }
-
-                    if (GenericTransport* pHisTransport = pLeader->GetTransport())
-                    {
-                        sendHeartbeat = true;
-                        me->Relocate(pLeader->GetPositionX(), pLeader->GetPositionY(), pLeader->GetPositionZ());
-                        pHisTransport->AddPassenger(me);
-                    }
-
-                    if (sendHeartbeat)
-                        me->SendHeartBeat(false);
-                }
+                char name[128] = {};
+                strcpy(name, pLeader->GetName());
+                ChatHandler(me).HandleGonameCommand(name);
                 return;
             }
 
