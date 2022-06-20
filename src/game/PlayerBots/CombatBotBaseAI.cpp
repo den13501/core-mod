@@ -527,9 +527,9 @@ void CombatBotBaseAI::PopulateSpellData()
                 }
                 else if (pSpellEntry->SpellName[0].find("Windfury Weapon") != std::string::npos)
                 {
-                    if (!pWindfuryTotem ||
-                        pWindfuryTotem->Rank < pSpellEntry->Rank)
-                        pWindfuryTotem = pSpellEntry;
+                    if (!pWindfuryWeapon ||
+                        pWindfuryWeapon->Id < pSpellEntry->Id)
+                        pWindfuryWeapon = pSpellEntry;
                 }
                 else if (pSpellEntry->SpellName[0].find("Grace of Air Totem") != std::string::npos)
                 {
@@ -2223,23 +2223,36 @@ void CombatBotBaseAI::PopulateSpellData()
         case CLASS_ROGUE:
         {
             // Rogues can only craft an item that applies the poison, they don't know the actual poison enchant.
-            SpellEntry const* pDeadlyPoison = sSpellMgr.GetSpellEntry(SPELL_DEADLY_POISON);
-            SpellEntry const* pInstantPoison = sSpellMgr.GetSpellEntry(SPELL_INSTANT_POISON);
-            SpellEntry const* pCripplingPoison = sSpellMgr.GetSpellEntry(SPELL_CRIPPLING_POISON);
-            SpellEntry const* pWoundPoison = sSpellMgr.GetSpellEntry(SPELL_WOUND_POISON);
-            SpellEntry const* pMindNumbingPoison = sSpellMgr.GetSpellEntry(SPELL_MIND_NUMBING_POISON);
+            auto GetHighestRankOfPoisonByName = [](std::string name, uint32 level)
+            {
+                SpellEntry const* pHighestRank = nullptr;
+                for (uint32 i = 0; i < sSpellMgr.GetMaxSpellId(); i++)
+                {
+                    if (SpellEntry const* pSpellEntry = sSpellMgr.GetSpellEntry(i))
+                    {
+                        if (pSpellEntry->Effect[0] == SPELL_EFFECT_ENCHANT_ITEM_TEMPORARY &&
+                            pSpellEntry->SpellName[0] == name && pSpellEntry->spellLevel <= level &&
+                            (!pHighestRank || pHighestRank->spellLevel < pSpellEntry->spellLevel))
+                        {
+                             pHighestRank = pSpellEntry;
+                        }
+                    }
+                }
+                return pHighestRank;
+            };
 
+            SpellEntry const* pPoisonSpell = nullptr;
             std::vector<SpellEntry const*> vPoisons;
-            if (pDeadlyPoison && hasDeadlyPoison)
-                vPoisons.push_back(pDeadlyPoison);
-            if (pInstantPoison && hasInstantPoison)
-                vPoisons.push_back(pInstantPoison);
-            if (pCripplingPoison && hasCripplingPoison)
-                vPoisons.push_back(pCripplingPoison);
-            if (pWoundPoison && hasWoundPoison)
-                vPoisons.push_back(pWoundPoison);
-            if (pMindNumbingPoison && HasMindNumbingPoison)
-                vPoisons.push_back(pMindNumbingPoison);
+            if (hasDeadlyPoison && (pPoisonSpell = GetHighestRankOfPoisonByName("Deadly Poison", me->GetLevel())))
+                vPoisons.push_back(pPoisonSpell);
+            if (hasInstantPoison && (pPoisonSpell = GetHighestRankOfPoisonByName("Instant Poison", me->GetLevel())))
+                vPoisons.push_back(pPoisonSpell);
+            if (hasCripplingPoison && (pPoisonSpell = GetHighestRankOfPoisonByName("Crippling Poison", me->GetLevel())))
+                vPoisons.push_back(pPoisonSpell);
+            if (hasWoundPoison && (pPoisonSpell = GetHighestRankOfPoisonByName("Wound Poison", me->GetLevel())))
+                vPoisons.push_back(pPoisonSpell);
+            if (HasMindNumbingPoison && (pPoisonSpell = GetHighestRankOfPoisonByName("Mind-numbing Poison", me->GetLevel())))
+                vPoisons.push_back(pPoisonSpell);
 
             if (!vPoisons.empty())
             {
