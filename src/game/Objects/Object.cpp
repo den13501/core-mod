@@ -432,7 +432,7 @@ void Object::BuildMovementUpdate(ByteBuffer* data, uint8 updateFlags) const
         MovementInfo m = wobject->m_movementInfo;
         if (!m.ctime)
         {
-            m.time = WorldTimer::getMSTime() + 1000;
+            m.stime = WorldTimer::getMSTime() + 1000;
             m.ChangePosition(wobject->GetPositionX(), wobject->GetPositionY(), wobject->GetPositionZ(), wobject->GetOrientation());
         }
         if (unit->ToCreature())
