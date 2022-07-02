@@ -2047,10 +2047,21 @@ void BattleBotAI::UpdateOutOfCombatAI_Warlock()
         m_isBuffing = false;
     }
 
-    SummonPetIfNeeded();
+	if (Unit* pVictim = me->GetVictim())
+	{
+		if (Pet* pPet = me->GetPet())
+		{
+			if (!pPet->GetVictim())
+			{
+				pPet->GetCharmInfo()->SetIsCommandAttack(true);
+				pPet->AI()->AttackStart(pVictim);
+			}
+		}
 
-    if (Unit* pVictim = me->GetVictim())
-        UpdateInCombatAI_Warlock();
+		UpdateInCombatAI_Warlock();
+	}
+	else
+		SummonPetIfNeeded();
 }
 
 void BattleBotAI::UpdateInCombatAI_Warlock()
