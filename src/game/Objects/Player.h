@@ -1496,6 +1496,7 @@ class Player final: public Unit
         float m_auraBaseMod[BASEMOD_END][MOD_END];
         SpellModList m_spellMods[MAX_SPELLMOD];
         uint32 m_lastFromClientCastedSpellID;
+        std::map<uint32, ItemSetEffect> m_itemSetEffects;
         
         bool IsNeedCastPassiveLikeSpellAtLearn(SpellEntry const* spellInfo) const;
         void SendInitialSpells() const;
@@ -1517,6 +1518,10 @@ class Player final: public Unit
 
         void CastItemCombatSpell(Unit* Target, WeaponAttackType attType);
         void CastItemUseSpell(Item* item, SpellCastTargets const& targets);
+
+        ItemSetEffect* GetItemSetEffect(uint32 setId);
+        ItemSetEffect* AddItemSetEffect(uint32 setId);
+        void RemoveItemSetEffect(uint32 setId);
 
         // needed by vanish and improved sap
         void CastHighestStealthRank();
@@ -1565,8 +1570,7 @@ class Player final: public Unit
                     ++spellCDItr;
             }
         }
-
-        std::vector<ItemSetEffect*> m_ItemSetEff;
+        
         uint32 m_castingSpell; // Last spell cast by client, or combo points if player is rogue
 
         /*********************************************************/
